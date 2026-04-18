@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "archdogma"
+version = "0.1.0.dev0"
+description = "Honest analysis of one function at a time. Catalog of programming dogmas with real post-mortems."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "IVS", email = "laurent.tubiana@free.fr" },
+]
+keywords = [
+    "static-analysis",
+    "ast",
+    "code-review",
+    "accessibility",
+    "programming-dogmas",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Documentation",
+]
+dependencies = [
+    "click>=8.1",
+    "rich>=13.7",
+    "pyttsx3>=2.90",
+]
+
+[project.optional-dependencies]
+git = [
+    "gitpython>=3.1",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "mypy>=1.8",
+    "ruff>=0.3",
+]
+
+[project.scripts]
+archdogma = "archdogma.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/archdogma"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = [
+    "-v",
+    "--strict-markers",
+]
