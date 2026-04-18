@@ -139,6 +139,102 @@ def detect_deep_nesting(
 
 
 # ---------------------------------------------------------------------------
+# long-function
+# ---------------------------------------------------------------------------
+#
+# Counts "source lines of code" (SLOC) inside a function body — lines that
+# contain at least one AST statement node. This naturally excludes:
+#
+#   - blank lines       (no statement lives there)
+#   - comment-only lines (not in the AST at all)
+#   - the initial docstring (a bare string Expr in position 0 — skipped)
+#
+# It includes every physical line covered by a statement, so multi-line
+# expressions correctly count as N lines. Bodies of nested def / async def /
+# class defs inside the probed function are NOT counted — only their signature
+# line contributes ("we saw a nested def here"), matching deep-nesting's
+# scope-boundary behavior.
+#
+# This is `long-function` from AST_TAGS_DRAFT.md §Tier 1. Threshold 80 is a
+# straight default, honestly not research-backed — the draft flags this.
+
+
+def _is_docstring(node: ast.stmt) -> bool:
+    """Return True if `node` is a bare string expression used as a docstring."""
+    return (
+        isinstance(node, ast.Expr)
+        and isinstance(node.value, ast.Constant)
+        and isinstance(node.value.value, str)
+    )
+
+
+def _collect_stmt_lines(
+    stmts: list[ast.stmt],
+    lines_out: set[int],
+    skip_first_docstring: bool = False,
+) -> None:
+    """Record line numbers covered by each statement in `stmts` (recursive).
+
+    Nested function / class definitions contribute only their own `lineno`
+    (the `def` / `class` keyword line). Their bodies belong to a different
+    scope and are probed separately.
+    """
+    for i, s in enumerate(stmts):
+        if skip_first_docstring and i == 0 and _is_docstring(s):
+            continue
+
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            # Count just the signature line; do not descend into inner scope.
+            lines_out.add(s.lineno)
+            continue
+
+        end = s.end_lineno or s.lineno
+        lines_out.update(range(s.lineno, end + 1))
+
+        # Recurse into sub-bodies that are part of the same scope.
+        for attr in ("body", "orelse", "finalbody"):
+            sub = getattr(s, attr, None)
+            if sub:
+                _collect_stmt_lines(sub, lines_out, False)
+        if isinstance(s, ast.Try):
+            for handler in s.handlers:
+                _collect_stmt_lines(handler.body, lines_out, False)
+        if isinstance(s, ast.Match):
+            for case in s.cases:
+                _collect_stmt_lines(case.body, lines_out, False)
+
+
+def detect_long_function(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    threshold: int = DEFAULT_LONG_FUNCTION_LOC,
+) -> Tag | None:
+    """Return a `Tag` if the function body has `threshold` SLOC or more.
+
+    SLOC = lines containing ≥1 AST statement. Does not count blanks,
+    comment-only lines, the initial docstring, or nested-scope bodies.
+    """
+    lines: set[int] = set()
+    _collect_stmt_lines(func.body, lines, skip_first_docstring=True)
+
+    sloc = len(lines)
+    if sloc < threshold:
+        return None
+
+    return Tag(
+        name="long-function",
+        detail=(
+            f"Function body has {sloc} SLOC (excluding blanks, comments, "
+            f"docstring, and nested-scope bodies). "
+            f"Default threshold: {threshold}. "
+            f"Source note: no research-backed absolute threshold — 50/80/100 "
+            f"heuristics vary by style guide."
+        ),
+        line=func.lineno,
+        col=func.col_offset,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry of Tier 1 detectors
 # ---------------------------------------------------------------------------
 #
@@ -150,4 +246,5 @@ TIER1_DETECTORS: tuple[
     tuple[str, "object"], ...
 ] = (
     ("deep-nesting", detect_deep_nesting),
+    ("long-function", detect_long_function),
 )

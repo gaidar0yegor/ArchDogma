@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "IVS", email = "laurent.tubiana@free.fr" },
+    { name = "Yegor Gaidar", email = "laurent.tubiana@free.fr" },
 ]
 keywords = [
     "static-analysis",

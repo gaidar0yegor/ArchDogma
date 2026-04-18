@@ -14,6 +14,23 @@
   для v0.1.0-alpha2. См.
   [docs/adr/002-machine-readable-catalog.md](docs/adr/002-machine-readable-catalog.md).
   Реализация рендерера и валидатора — в alpha2.
+- **Tier 1 детектор `long-function`** — второй тег в реестре.
+  - SLOC-метрика: множество физических строк, на которых живёт ≥1 AST-стейтмент.
+    Blanks, comment-only lines, начальный docstring и тела вложенных
+    `def`/`class` не считаются (те — отдельные скоупы).
+  - Multi-line statement корректно засчитывается как N строк.
+  - Дефолтный порог: 80. Конфигурируется параметром `threshold`.
+  - Источник в детали тега: честно помечен как
+    "no research-backed absolute threshold — 50/80/100 heuristics vary by style guide".
+  - End-to-end фикстура `tests/fixtures/long_function_sample.py::long_and_deep`
+    триггерит **оба** детектора (`deep-nesting` + `long-function`)
+    на одном probe — регрессия для TIER1_DETECTORS как реестра.
+- **Авторство**: `pyproject.toml` и `LICENSE` обновлены —
+  Yegor Gaidar, founder / author / executor.
+
+### Tests
+- +22 юнита (`tests/test_tier1_long_function.py`), +1 фикстура.
+  Итого: **42/42 зелёных** (17 deep-nesting + 22 long-function + 3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 
