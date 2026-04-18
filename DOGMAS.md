@@ -232,6 +232,17 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 **Related tags:** `god-function`, `god-class`, `long-function`.
 
+### Long Parameter List  \[long-parameter-list\]
+
+Классический code smell — когда сигнатура требует слишком многого, её обычно можно разбить на parameter object, keyword-only namespace или две разные функции.
+
+**Источники.**
+
+- Martin Fowler, «Refactoring» (1999/2018) — Long Parameter List
+- Robert C. Martin, «Clean Code» (2008): «Three arguments should be avoided where possible. More than three requires very special justification.»
+
+**Related tags:** `too-many-params`.
+
 ### YAGNI (You Aren't Gonna Need It)  \[yagni\]
 
 

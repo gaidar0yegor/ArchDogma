@@ -68,6 +68,20 @@
   - Фикстура `tests/fixtures/god_function_sample.py::dispatch_everything`
     (209 SLOC, 18 branches) — триггерит **оба** `long-function` и
     `god-function`, оба цепляют God Class candidate в каталоге.
+- **Tier 1 детектор `too-many-params`** — четвёртый тег в реестре.
+  - Считает `posonly + args + kwonly` параметры, плюс `*args` и `**kwargs`
+    как +1 каждый. Leading `self` / `cls` исключается (future-proof
+    для alpha4 class-method probe).
+  - Defaulted args считаются наравне с required — defaults снижают
+    шум вызова, но не сложность сигнатуры.
+  - Дефолтный порог: 5. Конфигурируется параметром `threshold`.
+  - Honest source note: Martin (≤3) / pylint R0913 (=5) / Sonar S107 (=7).
+    "No research-backed absolute threshold exists".
+  - Catalog candidate `long-parameter-list` добавлен со ссылками на
+    Fowler "Refactoring" и Martin "Clean Code"; `too-many-params` →
+    этот кандидат через `related_tags`.
+  - Фикстура `tests/fixtures/too_many_params_sample.py`: `lean` (3, чисто),
+    `on_the_line` (5, на пороге), `kitchen_sink` (7, с `*args`/`**kwargs`).
 - **Авторство**: `pyproject.toml` и `LICENSE` обновлены —
   Yegor Gaidar, founder / author / executor.
 
@@ -84,9 +98,13 @@
   sync-guard против committed `DOGMAS.md`.
 - +25 юнитов валидатора (`tests/test_catalog_validator.py`) —
   positive + negative для всех 6 правил.
-- Итого: **118/118 зелёных** (17 deep-nesting + 22 long-function +
-  17 god-function + 15 catalog-loader + 14 catalog-renderer +
-  25 catalog-validator + 5 probe-wiring + 3 smoke).
+- +26 юнитов too-many-params (`tests/test_tier1_too_many_params.py`) —
+  threshold boundary, posonly/kwonly/vararg/kwarg shape, self/cls
+  exclusion, async def, tag shape + honest sources.
+- Итого: **144/144 зелёных** (17 deep-nesting + 22 long-function +
+  17 god-function + 26 too-many-params + 15 catalog-loader +
+  14 catalog-renderer + 25 catalog-validator + 5 probe-wiring +
+  3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 

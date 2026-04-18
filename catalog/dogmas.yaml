@@ -267,6 +267,17 @@ candidates:
       - god-class     # pending (alpha3+, нужен class probe)
       - long-function
 
+  - id: long-parameter-list
+    title: "Long Parameter List"
+    note: "Классический code smell — когда сигнатура требует слишком многого, её обычно можно разбить на parameter object, keyword-only namespace или две разные функции."
+    sources:
+      - title: "Martin Fowler, «Refactoring» (1999/2018) — Long Parameter List"
+        url: null
+      - title: "Robert C. Martin, «Clean Code» (2008): «Three arguments should be avoided where possible. More than three requires very special justification.»"
+        url: null
+    related_tags:
+      - too-many-params
+
   - id: yagni
     title: "YAGNI (You Aren't Gonna Need It)"
   - id: kiss

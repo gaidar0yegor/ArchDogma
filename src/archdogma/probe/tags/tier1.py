@@ -26,6 +26,7 @@ DEFAULT_GOD_CLASS_LOC = 500
 DEFAULT_GOD_CLASS_METHODS = 25
 DEFAULT_DEEP_INHERITANCE_DEPTH = 4
 DEFAULT_IF_ON_PARAMETER_BRANCHES = 3
+DEFAULT_TOO_MANY_PARAMS = 5
 
 
 @dataclass(frozen=True)
@@ -340,6 +341,72 @@ def detect_god_function(
 
 
 # ---------------------------------------------------------------------------
+# too-many-params
+# ---------------------------------------------------------------------------
+#
+# Counts the parameters declared on the function signature:
+#
+#   posonly-args + args + *vararg (if present) + kwonly-args + **kwarg (if present)
+#
+# `self` / `cls` are NOT counted — they're the bound receiver, not a real
+# parameter from the caller's perspective. This only matters for methods,
+# which Tier 1 doesn't walk yet (alpha4), but the rule is future-proof.
+#
+# No notion of "required vs defaulted" in the count: a function with 8 params,
+# all defaulted, still has 8 things the reader must understand. Defaults reduce
+# boilerplate at call sites, not cognitive load on the signature.
+#
+# Honest source note:
+#   - Martin, "Clean Code" (2008): "Three arguments... should be avoided where
+#     possible. More than three... requires very special justification."
+#   - Fowler, "Refactoring" (1999/2018): "Long Parameter List" — bad smell, no
+#     hard number. Common tool defaults: pylint R0913=5, Sonar S107=7.
+#   There is no research-backed absolute threshold. Default 5 is middle-of-road.
+
+
+def _count_real_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """Count everything in `func.args` except a leading `self` / `cls`."""
+    a = func.args
+    # Positional-only + regular positional args, dropping a leading self/cls.
+    positional = list(a.posonlyargs) + list(a.args)
+    if positional and positional[0].arg in ("self", "cls"):
+        positional = positional[1:]
+    count = len(positional) + len(a.kwonlyargs)
+    if a.vararg is not None:
+        count += 1
+    if a.kwarg is not None:
+        count += 1
+    return count
+
+
+def detect_too_many_params(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    threshold: int = DEFAULT_TOO_MANY_PARAMS,
+) -> Tag | None:
+    """Return a `Tag` if the function signature has `threshold` or more params.
+
+    `self` / `cls` are excluded. `*args` and `**kwargs` each count as one.
+    Defaulted params count the same as required ones.
+    """
+    n = _count_real_params(func)
+    if n < threshold:
+        return None
+    return Tag(
+        name="too-many-params",
+        detail=(
+            f"Function signature has {n} parameters "
+            f"(excluding self/cls; *args and **kwargs count as 1 each). "
+            f"Default threshold: {threshold}. "
+            f"Source note: Martin (Clean Code, 2008) recommends ≤3; pylint "
+            f"R0913 defaults to 5; Sonar S107 to 7. No research-backed "
+            f"absolute threshold exists."
+        ),
+        line=func.lineno,
+        col=func.col_offset,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry of Tier 1 detectors
 # ---------------------------------------------------------------------------
 #
@@ -353,4 +420,5 @@ TIER1_DETECTORS: tuple[
     ("deep-nesting", detect_deep_nesting),
     ("long-function", detect_long_function),
     ("god-function", detect_god_function),
+    ("too-many-params", detect_too_many_params),
 )
