@@ -36,6 +36,7 @@ dependencies = [
     "click>=8.1",
     "rich>=13.7",
     "pyttsx3>=2.90",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

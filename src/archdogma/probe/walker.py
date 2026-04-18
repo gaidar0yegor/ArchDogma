@@ -10,7 +10,23 @@ import ast
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from archdogma.catalog.loader import Catalog, CandidateRef, DogmaRef
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS, Tag
+
+
+@dataclass(frozen=True)
+class CatalogLink:
+    """Connection between a detected tag and a catalog entry.
+
+    Kept as a separate, flat record (not a reference to DogmaRef) so rendering
+    is purely positional — no catalog re-lookup at print time.
+    """
+
+    tag_name: str
+    entry_id: str
+    entry_kind: str  # "dogma" | "candidate"
+    entry_title: str
+    entry_number: int | None  # dogmas have numbers, candidates don't
 
 
 @dataclass(frozen=True)
@@ -22,6 +38,7 @@ class ProbeResult:
     line_start: int
     line_end: int
     tags: tuple[Tag, ...] = field(default_factory=tuple)
+    catalog_links: tuple[CatalogLink, ...] = field(default_factory=tuple)
 
     @property
     def loc(self) -> int:
@@ -59,9 +76,41 @@ def find_function(
     return None
 
 
-def probe_function(path: Path, function_name: str) -> ProbeResult | None:
+def _build_catalog_links(
+    tags: list[Tag], catalog: Catalog | None
+) -> tuple[CatalogLink, ...]:
+    """Resolve catalog entries for each tag. Empty if no catalog or no match."""
+    if catalog is None:
+        return ()
+    links: list[CatalogLink] = []
+    for tag in tags:
+        entries = catalog.tag_index.get(tag.name, ())
+        for entry in entries:
+            links.append(_link_from_entry(tag.name, entry))
+    return tuple(links)
+
+
+def _link_from_entry(
+    tag_name: str, entry: DogmaRef | CandidateRef
+) -> CatalogLink:
+    number = entry.number if isinstance(entry, DogmaRef) else None
+    return CatalogLink(
+        tag_name=tag_name,
+        entry_id=entry.id,
+        entry_kind=entry.kind,
+        entry_title=entry.title,
+        entry_number=number,
+    )
+
+
+def probe_function(
+    path: Path,
+    function_name: str,
+    catalog: Catalog | None = None,
+) -> ProbeResult | None:
     """Run all Tier 1 detectors against one function in `path`.
 
+    If `catalog` is provided, also resolves catalog links for each tag.
     Returns None if the function is not found in the file.
     """
     tree = parse_file(path)
@@ -81,4 +130,5 @@ def probe_function(path: Path, function_name: str) -> ProbeResult | None:
         line_start=func.lineno,
         line_end=func.end_lineno or func.lineno,
         tags=tuple(tags),
+        catalog_links=_build_catalog_links(tags, catalog),
     )

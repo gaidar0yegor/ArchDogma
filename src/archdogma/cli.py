@@ -14,6 +14,7 @@ from pathlib import Path
 import click
 
 from archdogma import __version__
+from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.probe.walker import (
     ProbeResult,
@@ -68,8 +69,20 @@ def main(ctx: click.Context, pretty: bool) -> None:
     default=None,
     help="Function name to probe. If omitted, lists top-level functions in the file.",
 )
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
 @click.pass_context
-def probe(ctx: click.Context, target: Path, function_name: str | None) -> None:
+def probe(
+    ctx: click.Context,
+    target: Path,
+    function_name: str | None,
+    catalog_path: Path | None,
+) -> None:
     """Analyze one top-level function from a Python file."""
     try:
         tree = parse_file(target)
@@ -90,7 +103,10 @@ def probe(ctx: click.Context, target: Path, function_name: str | None) -> None:
         click.echo("\nUse --function NAME to probe one.")
         return
 
-    result = probe_function(target, function_name)
+    # Catalog is optional — probe works without it, just prints empty links.
+    catalog = _try_load_catalog(catalog_path)
+
+    result = probe_function(target, function_name, catalog=catalog)
     if result is None:
         click.echo(
             f"Function '{function_name}' not found in {target}.", err=True
@@ -106,53 +122,76 @@ def probe(ctx: click.Context, target: Path, function_name: str | None) -> None:
 
 
 # ---------------------------------------------------------------------------
-# dogmas — list catalog entries (naive, pending ADR-002)
+# dogmas — list catalog entries (from YAML per ADR-002)
 # ---------------------------------------------------------------------------
 
 
-@main.command(help="List dogmas from the catalog. [v0.1: naive, see ADR-002.]")
+@main.command(help="List dogmas from the catalog (YAML source per ADR-002).")
 @click.option(
     "--catalog",
+    "catalog_path",
     type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
     default=None,
-    help="Path to DOGMAS.md. Defaults to project root.",
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
 )
-def dogmas(catalog: Path | None) -> None:
-    """List dogma catalog entries.
-
-    v0.1 implementation: naive grep of `## N. Name` headings from DOGMAS.md.
-    Machine-readable format is ADR-002 (pending).
-    """
-    if catalog is None:
-        catalog = _find_dogmas_md()
-    if catalog is None or not catalog.exists():
-        click.echo("DOGMAS.md not found. Pass --catalog <path>.", err=True)
+@click.option(
+    "--include-stubs/--no-stubs",
+    default=True,
+    help="Include dogmas with status=stub (default: show all).",
+)
+@click.option(
+    "--include-candidates/--no-candidates",
+    default=False,
+    help="Include candidate entries (default: dogmas only).",
+)
+def dogmas(
+    catalog_path: Path | None,
+    include_stubs: bool,
+    include_candidates: bool,
+) -> None:
+    """List dogma catalog entries from the YAML source."""
+    try:
+        catalog = load_catalog(catalog_path)
+    except CatalogError as e:
+        click.echo(f"Catalog error: {e}", err=True)
         sys.exit(1)
 
-    click.echo(f"=== Dogma catalog ({catalog}) ===")
-    in_code_fence = False
-    for line in catalog.read_text(encoding="utf-8").splitlines():
-        if line.startswith("```"):
-            in_code_fence = not in_code_fence
+    click.echo(f"=== Dogma catalog (schema v{catalog.schema_version}) ===")
+    for d in sorted(catalog.dogmas, key=lambda x: x.number):
+        if not include_stubs and d.status == "stub":
             continue
-        if in_code_fence:
-            continue
-        if (
-            line.startswith("## ")
-            and not line.startswith("## Догмы-кандидаты")
-            and not line.startswith("## Как контрибьютить")
-        ):
-            click.echo(line[3:].strip())
+        marker = " 🎯" if d.v01_priority else ""
+        click.echo(f"§{d.number}. {d.title} [{d.status}]{marker}")
+
+    if include_candidates and catalog.candidates:
+        click.echo("")
+        click.echo("Candidates (not yet full dogmas):")
+        for c in catalog.candidates:
+            click.echo(f"- {c.title}  [{c.id}]")
 
 
-def _find_dogmas_md() -> Path | None:
-    """Look for DOGMAS.md in the current working dir and a few ancestors."""
-    here = Path.cwd()
-    for candidate in [here, *here.parents]:
-        p = candidate / "DOGMAS.md"
-        if p.exists():
-            return p
-    return None
+# ---------------------------------------------------------------------------
+# Catalog loading
+# ---------------------------------------------------------------------------
+
+
+def _try_load_catalog(path: Path | None) -> Catalog | None:
+    """Load catalog, but treat absence as non-fatal for `probe`.
+
+    If the user explicitly passed `--catalog` and it's broken, we do exit —
+    that's a misconfiguration. If auto-detection just doesn't find one, we
+    print a one-line note to stderr and continue without catalog links.
+    """
+    try:
+        return load_catalog(path)
+    except CatalogError as e:
+        if path is not None:
+            click.echo(f"Catalog error: {e}", err=True)
+            sys.exit(1)
+        click.echo(
+            f"Note: {e} Continuing without catalog links.", err=True
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +234,24 @@ def _render_plain(result: ProbeResult) -> None:
         click.echo(f"- [{tag.name}] at line {tag.line}, col {tag.col}")
         click.echo(f"  {tag.detail}")
     click.echo()
-    click.echo("Catalog links: (none — Probe→Catalog wiring ships with ADR-002)")
+
+    _render_catalog_links_plain(result)
+
+
+def _render_catalog_links_plain(result: ProbeResult) -> None:
+    if not result.catalog_links:
+        if result.tags:
+            click.echo(
+                "Catalog links: none — no catalog dogma claims these tags yet."
+            )
+        return
+    click.echo("Catalog links:")
+    for link in result.catalog_links:
+        if link.entry_kind == "dogma" and link.entry_number is not None:
+            label = f"§{link.entry_number} {link.entry_title}"
+        else:
+            label = f"(candidate) {link.entry_title}"
+        click.echo(f"- [{link.tag_name}] → {label}  [{link.entry_id}]")
 
 
 def _render_pretty(result: ProbeResult) -> None:
@@ -225,9 +281,24 @@ def _render_pretty(result: ProbeResult) -> None:
     for tag in result.tags:
         table.add_row(tag.name, f"L{tag.line}:{tag.col}", tag.detail)
     console.print(table)
-    console.print(
-        "[dim]Catalog links: none yet — Probe→Catalog wiring ships with ADR-002.[/dim]"
-    )
+
+    if not result.catalog_links:
+        console.print(
+            "[dim]Catalog links: none — no catalog dogma claims these tags yet.[/dim]"
+        )
+        return
+
+    links = Table(title="Catalog links", show_lines=False)
+    links.add_column("Tag", style="bold")
+    links.add_column("Entry")
+    links.add_column("Kind", style="dim")
+    for link in result.catalog_links:
+        if link.entry_kind == "dogma" and link.entry_number is not None:
+            label = f"§{link.entry_number} {link.entry_title}"
+        else:
+            label = link.entry_title
+        links.add_row(link.tag_name, label, link.entry_kind)
+    console.print(links)
 
 
 if __name__ == "__main__":

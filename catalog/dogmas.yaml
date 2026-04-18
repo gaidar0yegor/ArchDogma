@@ -1,0 +1,295 @@
+# ArchDogma catalog — machine-readable source of truth per ADR-002.
+#
+# Statuses:
+#   stub    = заголовок и определение есть, кейсов нет
+#   draft   = есть черновой honest_verdict, но без реальных post-mortems
+#   filled  = заполнено полностью (для v0.1 — три приоритетные догмы)
+#
+# Правила:
+#   - каждая counter_dogma обязана иметь attribution (валидатор — в alpha3)
+#   - related_tags — имена Tier 1/2/... детекторов, которые мэппятся на догму
+#   - пустой related_tags означает: «догма существует не на уровне функции»
+#     (DRY/Microservices — не детектируются по одной функции, это честно)
+
+schema_version: 1
+updated: 2026-04-18
+
+dogmas:
+
+  # -------------------------------------------------------------------------
+  # 1. 100% Test Coverage — stub
+  # -------------------------------------------------------------------------
+  - id: hundred-percent-coverage
+    number: 1
+    title: "100% Test Coverage"
+    status: stub
+    definition: "Всё должно быть покрыто unit-тестами. Непокрытый код — это риск."
+    origin: "TDD-движение, Kent Beck, Uncle Bob, XP."
+    related_tags: []  # требует Tier 4 coverage data, не уровень функции
+
+  # -------------------------------------------------------------------------
+  # 2. Clean Architecture / N слоёв — stub
+  # -------------------------------------------------------------------------
+  - id: clean-architecture
+    number: 2
+    title: "Clean Architecture / N слоёв абстракции"
+    status: stub
+    definition: "Разделяй код на слои (domain, application, infrastructure, presentation). Зависимости идут внутрь."
+    origin: "Uncle Bob, «Clean Architecture». Ранее Hexagonal/Onion Architecture."
+    related_tags: []  # file/module-level, не функция
+
+  # -------------------------------------------------------------------------
+  # 3. DRY — v0.1 priority, filled
+  # -------------------------------------------------------------------------
+  - id: dry
+    number: 3
+    title: "DRY (Don't Repeat Yourself)"
+    v01_priority: true
+    status: filled
+    definition: "Никогда не копипасть. Любое повторение — кандидат на абстракцию."
+    origin: "«The Pragmatic Programmer», Hunt & Thomas, 1999."
+
+    failure_conditions:
+      - "Когда две похожие вещи объединяются в одну абстракцию, а потом расходятся."
+      - "Shared libraries между командами с разными release-циклами."
+      - "Слишком ранняя абстракция (до 3-го реального use case)."
+
+    failure_cases: need_postmortems
+    success_cases: need_data
+
+    counter_dogmas:
+      - name: "WET (Write Everything Twice)"
+        attribution: "folk, анонимный"
+        thesis: "Пока не увидел повторение дважды — не абстрагируй."
+      - name: "Rule of Three"
+        attribution: "Don Roberts via Martin Fowler, «Refactoring» (1999)"
+        thesis: "Три повторения — только тогда кандидат на абстракцию."
+      - name: "The Wrong Abstraction"
+        attribution: "Sandi Metz, 2016"
+        source_url: "https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction"
+        thesis: "Duplication is far cheaper than the wrong abstraction."
+      - name: "AHA (Avoid Hasty Abstractions)"
+        attribution: "Kent C. Dodds, 2019"
+        source_url: "https://kentcdodds.com/blog/aha-programming"
+        thesis: "Раньше в каталоге AHA ошибочно атрибутировался Sandi Metz — это разные авторы."
+
+    honest_verdict:
+      status: draft_awaiting_cases
+      follow_when:
+        - "Повторяется знание (бизнес-правило, формула, инвариант), а не форма кода."
+        - "Ты видишь третье повторение (Rule of Three), и все три вызываются из одного контекста / одной командой / одного релизного цикла."
+        - "Цена ошибочной абстракции ниже цены дубля."
+      break_when:
+        - "Два куска кода выглядят одинаково, но меняются по разным причинам (разные стейкхолдеры, разные релиз-циклы, разные домены)."
+        - "Абстракция пересекает границу команд или сервисов."
+        - "Есть только 1–2 повторения, и ты ещё не видел, как оно реально меняется."
+        - "Код — исследовательский / одноразовый."
+      main_signal: "Каждое новое требование добавляет в «общую» функцию if-флаг. Это не расширение — это признание, что ты склеил две разные вещи."
+
+    related_tags:
+      - wrong-abstraction  # future Tier 5 — detect via divergent call-sites + if-on-parameter inside shared fn
+
+  # -------------------------------------------------------------------------
+  # 4. Microservices — v0.1 priority, filled
+  # -------------------------------------------------------------------------
+  - id: microservices
+    number: 4
+    title: "Microservices для всего"
+    v01_priority: true
+    status: filled
+    definition: "Монолит — зло. Режь систему на маленькие сервисы."
+    origin: "Netflix, Amazon, ThoughtWorks, ~2014."
+
+    failure_conditions:
+      - "Команда < 10 человек."
+      - "Один продукт, не независимые бизнес-юниты."
+      - "Distributed transactions становятся нормой."
+      - "Debug занимает 3 часа, потому что trace разлетается по 12 сервисам."
+
+    failure_cases: need_postmortems
+    success_cases:
+      - title: "Netflix, Amazon (на определённом масштабе)"
+        source_url: null
+        summary: "Нужны конкретные ссылки на post-mortems с числами."
+
+    counter_dogmas:
+      - name: "MonolithFirst"
+        attribution: "Martin Fowler, 2015"
+        source_url: "https://martinfowler.com/bliki/MonolithFirst.html"
+        thesis: "Почти все успешные микросервисные системы начинались как монолиты и были распилены позже."
+      - name: "Modular Monolith"
+        attribution: "Shopify и другие"
+        thesis: "Модули с чёткими границами внутри одного процесса. Без сетевых границ, но с возможностью разделить позже."
+      - name: "Prime Video monolith migration"
+        attribution: "Amazon Prime Video Tech Blog, 2023"
+        source_url: "https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
+        thesis: "Переход от serverless/микросервисов обратно к монолиту со снижением инфраструктурных затрат на 90%."
+
+    honest_verdict:
+      status: draft_awaiting_cases
+      follow_when:
+        - "У тебя действительно несколько независимых бизнес-доменов с разными командами, релизными циклами и масштабом."
+        - "Команда больше 10–15 человек и уже есть конкретная боль от монолита."
+        - "Ты готов платить операционную цену распределённой системы."
+      break_when:
+        - "Команда < 10 человек и/или один продукт."
+        - "Проект в фазе стартапа / MVP — домен ещё не устоялся."
+        - "Появляются distributed transactions или debug-сессии, где trace разлетается по 5+ сервисам."
+        - "Основная боль — в сложности бизнес-логики, а не в масштабе."
+      main_signal: "Distributed monolith — куча мелких сервисов, которые всё равно меняются вместе и деплоятся вместе, но теперь ещё через сеть."
+
+    related_tags: []  # системный уровень, не детектируется на одной функции
+
+  # -------------------------------------------------------------------------
+  # 5. OOP как единственная истина — stub
+  # -------------------------------------------------------------------------
+  - id: oop-everywhere
+    number: 5
+    title: "OOP как единственная истина (наследование везде)"
+    status: stub
+    definition: "Всё — объект. Наследование — главный инструмент переиспользования."
+    origin: "Smalltalk, Java, GoF Design Patterns."
+    related_tags:
+      - deep-inheritance  # future Tier 1 detector
+
+  # -------------------------------------------------------------------------
+  # 6. TDD — v0.1 priority, filled
+  # -------------------------------------------------------------------------
+  - id: tdd
+    number: 6
+    title: "TDD (Test-Driven Development)"
+    v01_priority: true
+    status: filled
+    definition: "Red-Green-Refactor. Сначала пишем тест, потом код."
+    origin: "Kent Beck."
+
+    failure_conditions:
+      - "Неизвестная область — ещё не знаешь, каким должен быть API."
+      - "UI-код, визуализации."
+      - "Research / exploratory coding."
+
+    failure_cases: need_postmortems
+    success_cases: need_data
+
+    counter_dogmas:
+      - name: "Spike First"
+        attribution: "Kent Beck, «Extreme Programming Explained» (1999)"
+        thesis: "В неизвестной области сначала spike (одноразовый прототип без тестов), потом выбрасывается, потом переписывается через TDD."
+      - name: "Test After / Test Last"
+        attribution: "folk, контр-практика"
+        thesis: "Тесты пишутся после реализации, когда API уже устоялся. Область: UI, exploratory, research."
+      - name: "Characterization Testing"
+        attribution: "Michael Feathers, «Working Effectively with Legacy Code» (2004)"
+        thesis: "Для legacy без тестов: тест фиксирует текущее поведение, чтобы рефакторить безопасно."
+      - name: "TDD is dead. Long live testing."
+        attribution: "DHH (David Heinemeier Hansson), 2014"
+        source_url: "https://dhh.dk/2014/tdd-is-dead-long-live-testing.html"
+        thesis: "TDD как идеология привела к over-mocking и дизайну под тесты вместо дизайна под задачу."
+
+    honest_verdict:
+      status: draft_awaiting_cases
+      follow_when:
+        - "Ты уже понимаешь домен и примерно знаешь, каким должен быть API."
+        - "Работаешь над стабильной бизнес-логикой, которую планируешь рефакторить."
+        - "Цена ошибки в проде очень высокая (финансы, безопасность, медицина, биллинг)."
+      break_when:
+        - "Ты в неизвестной области — используй Spike First."
+        - "Работаешь с UI, сложными визуальными состояниями или внешними интеграциями — Test After."
+        - "Работаешь с legacy без тестов — Characterization Testing."
+        - "Прототип / proof of concept, который будет выброшен через неделю."
+      main_signal: "Ты пишешь тест раньше, чем понял, что код должен делать. Результат — хорошо протестированный неправильный дизайн + лес моков."
+
+    related_tags: []  # требует Tier 4 (coverage + test structure), не статический анализ функции
+
+  # -------------------------------------------------------------------------
+  # 7. SOLID как закон — stub
+  # -------------------------------------------------------------------------
+  - id: solid
+    number: 7
+    title: "SOLID как закон"
+    status: stub
+    definition: "SRP, OCP, LSP, ISP, DIP — пять принципов, которым должен следовать весь код."
+    origin: "Uncle Bob, 2000-е."
+    related_tags: []  # файл/модуль-уровень
+
+  # -------------------------------------------------------------------------
+  # 8. Self-documenting code — stub
+  # -------------------------------------------------------------------------
+  - id: self-documenting-code
+    number: 8
+    title: "Self-documenting code (комментарии не нужны)"
+    status: stub
+    definition: "Хороший код читается без комментариев. Комментарии — признак непонятного кода."
+    origin: "Uncle Bob, «Clean Code»."
+    related_tags: []  # требует анализа comment-to-code ratio, не чисто AST
+
+  # -------------------------------------------------------------------------
+  # 9. Premature optimization — stub
+  # -------------------------------------------------------------------------
+  - id: premature-optimization
+    number: 9
+    title: "Premature optimization is the root of all evil"
+    status: stub
+    definition: "Не оптимизируй, пока не профилировал. (Обычно цитируется без контекста.)"
+    origin: "Donald Knuth, 1974. Полная цитата: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»"
+    related_tags: []
+
+  # -------------------------------------------------------------------------
+  # 10. Functional purity / Immutability — stub
+  # -------------------------------------------------------------------------
+  - id: functional-purity
+    number: 10
+    title: "Functional purity / Immutability везде"
+    status: stub
+    definition: "Избегай мутаций. Чистые функции. Никаких side effects."
+    origin: "Haskell-сообщество, FP-ренессанс 2010-х, React/Redux."
+    related_tags: []
+
+# -----------------------------------------------------------------------------
+# Кандидаты — догмы и антипаттерны, которые ещё не разобраны до уровня полного
+# каталога. Могут быть promoted до dogmas как только накопятся кейсы.
+# -----------------------------------------------------------------------------
+
+candidates:
+  - id: god-class
+    title: "God File / God Class"
+    note: "Антипаттерн-следствие, не догма. Появляется от страха рефакторинга + отсутствия тестов + дедлайнов."
+    sources:
+      - title: "SQLite amalgamation — осознанное решение ради производительности (~238k строк)"
+        url: "https://sqlite.org/amalgamation.html"
+      - title: "Knight Capital 2012 — $440M от dead code в legacy"
+        url: "https://www.sec.gov/litigation/admin/2013/34-70694.pdf"
+      - title: "Michael Feathers, «Working Effectively with Legacy Code» (2004)"
+        url: null
+    # Будет promoted в dogmas когда god-function / god-class детекторы стабилизируются
+    related_tags:
+      - god-function  # pending (alpha2/alpha3)
+      - god-class     # pending (alpha3+, нужен class probe)
+      - long-function
+
+  - id: yagni
+    title: "YAGNI (You Aren't Gonna Need It)"
+  - id: kiss
+    title: "KISS (Keep It Simple, Stupid)"
+  - id: agile-rituals
+    title: "Agile и его ритуалы"
+  - id: config-over-code
+    title: "Конфигурация вместо кода"
+  - id: serverless-everything
+    title: "Serverless для всего"
+  - id: graphql-over-rest
+    title: "GraphQL вместо REST"
+  - id: nosql-over-sql
+    title: "NoSQL вместо SQL"
+  - id: event-sourcing
+    title: "Event Sourcing"
+  - id: ddd-mandatory
+    title: "Domain-Driven Design как обязательная практика"
+  - id: code-reviews-mandatory
+    title: "Code reviews должны быть обязательными всегда"
+  - id: feature-flags-over-branches
+    title: "Feature flags вместо веток"
+  - id: monorepo-vs-polyrepo
+    title: "Монорепо vs полирепо"
+  - id: pair-programming-always
+    title: "Pair programming всегда"

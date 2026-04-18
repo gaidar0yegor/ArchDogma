@@ -8,12 +8,18 @@
 ## [Unreleased]
 
 ### Added
-- **ADR-002**: machine-readable каталог — единый YAML-источник, `DOGMAS.md`
-  генерируется. Зафиксирована schema v1, правила валидатора
-  (`attribution` обязателен для `counter_dogmas`, etc.), migration plan
-  для v0.1.0-alpha2. См.
-  [docs/adr/002-machine-readable-catalog.md](docs/adr/002-machine-readable-catalog.md).
-  Реализация рендерера и валидатора — в alpha2.
+- **ADR-002 wiring (gentle minimum)**: `catalog/dogmas.yaml` стал
+  живым источником; `src/archdogma/catalog/loader.py` реализован —
+  `DogmaRef`, `CandidateRef`, `Catalog` (frozen dataclasses), `tag_index`.
+  Probe теперь принимает опциональный каталог и возвращает
+  `ProbeResult.catalog_links: tuple[CatalogLink, ...]` с `tag_name →
+  (entry_id, entry_kind, entry_title, entry_number)`.
+  Рендерер YAML→Markdown и full-validator — всё ещё следующая веха.
+- **CLI**: у `archdogma probe` появился флаг `--catalog PATH`
+  (auto-detect по cwd, fallback — тёплое сообщение в stderr).
+  `archdogma dogmas` теперь читает YAML (не режет heading-ы из `.md`);
+  поддерживает `--include-stubs/--no-stubs` и
+  `--include-candidates/--no-candidates`.
 - **Tier 1 детектор `long-function`** — второй тег в реестре.
   - SLOC-метрика: множество физических строк, на которых живёт ≥1 AST-стейтмент.
     Blanks, comment-only lines, начальный docstring и тела вложенных
@@ -25,12 +31,32 @@
   - End-to-end фикстура `tests/fixtures/long_function_sample.py::long_and_deep`
     триггерит **оба** детектора (`deep-nesting` + `long-function`)
     на одном probe — регрессия для TIER1_DETECTORS как реестра.
+- **Tier 1 детектор `god-function`** — третий тег в реестре.
+  - AND-семантика двух порогов: `SLOC ≥ loc_threshold` **И**
+    `branches ≥ branch_threshold`. Либо один — разные запахи, не этот.
+  - Ветки McCabe-style: `if / elif / for / while / except / case`.
+    `with` — последовательный, не ветка. Boolean `and/or` — не считаются.
+  - Scope boundary: ветки вложенных `def` / `class` принадлежат им, не
+    внешней функции (регрессия закрыта тестом).
+  - Дефолты: 200 SLOC и 15 branches. Конфигурируется.
+  - Honest source note: McCabe (1976) даёт счёт ветвей;
+    «no research-backed absolute god-function threshold exists».
+  - Фикстура `tests/fixtures/god_function_sample.py::dispatch_everything`
+    (209 SLOC, 18 branches) — триггерит **оба** `long-function` и
+    `god-function`, оба цепляют God Class candidate в каталоге.
 - **Авторство**: `pyproject.toml` и `LICENSE` обновлены —
   Yegor Gaidar, founder / author / executor.
 
+### Dependencies
+- `pyyaml >= 6.0` (каталог-лоадер).
+
 ### Tests
-- +22 юнита (`tests/test_tier1_long_function.py`), +1 фикстура.
-  Итого: **42/42 зелёных** (17 deep-nesting + 22 long-function + 3 smoke).
+- +15 юнитов loader'а (`tests/test_catalog_loader.py`)
+- +5 юнитов Probe↔Catalog wiring (`tests/test_probe_catalog_wiring.py`)
+- +17 юнитов god-function (`tests/test_tier1_god_function.py`),
+  +1 фикстура (`god_function_sample.py`).
+- Итого: **79/79 зелёных** (17 deep-nesting + 22 long-function +
+  17 god-function + 15 catalog-loader + 5 probe-wiring + 3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 

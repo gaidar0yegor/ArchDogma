@@ -235,6 +235,111 @@ def detect_long_function(
 
 
 # ---------------------------------------------------------------------------
+# god-function
+# ---------------------------------------------------------------------------
+#
+# Combines two signals from the same AST walk: SLOC (reused from
+# long-function) AND a McCabe-ish branch count. A function is "god" only
+# when BOTH thresholds trip — long-AND-branchy. Short-but-branchy and
+# long-but-linear are different shapes of smell, handled (or not) by other
+# detectors.
+#
+# Branch counting is deliberately conservative:
+#   +1 per If / elif         (elif = nested If in orelse — natural recursion)
+#   +1 per For / AsyncFor / While
+#   +1 per `except` handler
+#   +1 per `case` clause in match
+#
+# We do NOT count boolean operators (and/or) inside test expressions. Classic
+# McCabe would; practice varies by tool (radon vs lizard vs Sonar). Skipping
+# them keeps the number legible and matches the honest_verdict of
+# AST_TAGS_DRAFT.md: the threshold isn't research-backed either way.
+#
+# Nested def / class inside the function are NOT descended — same scope rule
+# as the other Tier 1 detectors.
+
+
+def _count_branches(stmts: list[ast.stmt], state: dict[str, int]) -> None:
+    """Count branch-creating statements in `stmts`, recursively (same scope)."""
+    for s in stmts:
+        if isinstance(s, ast.If):
+            state["n"] += 1
+            _count_branches(s.body, state)
+            _count_branches(s.orelse, state)
+        elif isinstance(s, _SIMPLE_NESTING):
+            # For / AsyncFor / While are loops and count; With / AsyncWith
+            # are sequential and do not.
+            if isinstance(s, ast.For | ast.AsyncFor | ast.While):
+                state["n"] += 1
+            _count_branches(s.body, state)
+            orelse = getattr(s, "orelse", None)
+            if orelse:
+                _count_branches(orelse, state)
+        elif isinstance(s, ast.Try):
+            _count_branches(s.body, state)
+            for handler in s.handlers:
+                state["n"] += 1
+                _count_branches(handler.body, state)
+            _count_branches(s.orelse, state)
+            _count_branches(s.finalbody, state)
+        elif isinstance(s, ast.Match):
+            for case in s.cases:
+                state["n"] += 1
+                _count_branches(case.body, state)
+        elif isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            # Scope boundary — do not descend.
+            continue
+        else:
+            # Plain statement: descend into sub-bodies that exist in THIS scope.
+            for attr in ("body", "orelse", "finalbody"):
+                sub = getattr(s, attr, None)
+                if sub:
+                    _count_branches(sub, state)
+
+
+def _compute_sloc(func: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """SLOC of `func` body. Single source of truth — shared with long-function."""
+    lines: set[int] = set()
+    _collect_stmt_lines(func.body, lines, skip_first_docstring=True)
+    return len(lines)
+
+
+def detect_god_function(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    loc_threshold: int = DEFAULT_GOD_FUNCTION_LOC,
+    branch_threshold: int = DEFAULT_GOD_FUNCTION_BRANCHES,
+) -> Tag | None:
+    """Return a `Tag` if the function is BOTH long AND branchy.
+
+    `loc_threshold` and `branch_threshold` are an AND, not an OR — a 300-SLOC
+    but linear helper is not "god"; a 50-SLOC but 20-branch dispatcher isn't
+    either. Both together are what we name.
+    """
+    sloc = _compute_sloc(func)
+    if sloc < loc_threshold:
+        return None
+
+    state: dict[str, int] = {"n": 0}
+    _count_branches(func.body, state)
+    branches = state["n"]
+    if branches < branch_threshold:
+        return None
+
+    return Tag(
+        name="god-function",
+        detail=(
+            f"Function is long AND branchy: {sloc} SLOC, {branches} branches "
+            f"(if/elif/for/while/except/case). "
+            f"Default thresholds: {loc_threshold} SLOC & {branch_threshold} branches. "
+            f"Source note: McCabe (1976) inspires the branch count; no "
+            f"research-backed absolute god-function threshold exists."
+        ),
+        line=func.lineno,
+        col=func.col_offset,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry of Tier 1 detectors
 # ---------------------------------------------------------------------------
 #
@@ -247,4 +352,5 @@ TIER1_DETECTORS: tuple[
 ] = (
     ("deep-nesting", detect_deep_nesting),
     ("long-function", detect_long_function),
+    ("god-function", detect_god_function),
 )
