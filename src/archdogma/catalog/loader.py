@@ -35,7 +35,13 @@ import yaml
 
 @dataclass(frozen=True)
 class DogmaRef:
-    """Lightweight view of one catalog dogma, sufficient for Probe wiring."""
+    """Lightweight view of one catalog dogma, sufficient for Probe wiring.
+
+    `raw` holds the full dict as parsed from YAML — renderer and validator
+    use it to access optional fields (`definition`, `origin`, `counter_dogmas`,
+    `honest_verdict`, etc.) without enumerating them here. The dataclass
+    itself stays frozen; `raw` is set once at load time.
+    """
 
     id: str
     number: int
@@ -44,6 +50,7 @@ class DogmaRef:
     v01_priority: bool = False
     related_tags: tuple[str, ...] = ()
     kind: str = "dogma"
+    raw: dict = field(default_factory=dict, compare=False, repr=False)
 
 
 @dataclass(frozen=True)
@@ -54,6 +61,7 @@ class CandidateRef:
     title: str
     related_tags: tuple[str, ...] = ()
     kind: str = "candidate"
+    raw: dict = field(default_factory=dict, compare=False, repr=False)
 
 
 @dataclass(frozen=True)
@@ -66,6 +74,7 @@ class Catalog:
     tag_index: dict[str, tuple[DogmaRef | CandidateRef, ...]] = field(
         default_factory=dict
     )
+    updated: str | None = None  # ISO date string from YAML top-level
 
 
 class CatalogError(RuntimeError):
@@ -130,11 +139,13 @@ def load_catalog(path: Path | None = None) -> Catalog:
         for t in c.related_tags:
             idx[t].append(c)
 
+    updated = data.get("updated")
     return Catalog(
         schema_version=schema_version,
         dogmas=dogmas,
         candidates=candidates,
         tag_index={k: tuple(v) for k, v in idx.items()},
+        updated=str(updated) if updated is not None else None,
     )
 
 
@@ -151,6 +162,7 @@ def _dogma_from_dict(d: dict) -> DogmaRef:
         status=str(d["status"]),
         v01_priority=bool(d.get("v01_priority", False)),
         related_tags=tuple(d.get("related_tags") or ()),
+        raw=dict(d),
     )
 
 
@@ -163,6 +175,7 @@ def _candidate_from_dict(d: dict) -> CandidateRef:
         id=str(d["id"]),
         title=str(d["title"]),
         related_tags=tuple(d.get("related_tags") or ()),
+        raw=dict(d),
     )
 
 

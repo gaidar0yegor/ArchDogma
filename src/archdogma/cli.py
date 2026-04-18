@@ -15,6 +15,8 @@ import click
 
 from archdogma import __version__
 from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
+from archdogma.catalog.renderer import render_catalog
+from archdogma.catalog.validator import has_errors, validate_catalog
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.probe.walker import (
     ProbeResult,
@@ -168,6 +170,127 @@ def dogmas(
         click.echo("Candidates (not yet full dogmas):")
         for c in catalog.candidates:
             click.echo(f"- {c.title}  [{c.id}]")
+
+
+# ---------------------------------------------------------------------------
+# render-catalog — YAML → Markdown (ADR-002)
+# ---------------------------------------------------------------------------
+
+
+@main.command("render-catalog", help="Render catalog/dogmas.yaml to Markdown (ADR-002).")
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
+@click.option(
+    "--output",
+    "-o",
+    "output_path",
+    type=click.Path(dir_okay=False, writable=True, path_type=Path),
+    default=None,
+    help="Where to write DOGMAS.md. If omitted, prints to stdout.",
+)
+@click.option(
+    "--check",
+    is_flag=True,
+    default=False,
+    help=(
+        "Don't write anything. Compare rendered output to --output (or project "
+        "DOGMAS.md); exit 1 if they differ. For CI."
+    ),
+)
+def render_catalog_cmd(
+    catalog_path: Path | None,
+    output_path: Path | None,
+    check: bool,
+) -> None:
+    """Render the YAML catalog to Markdown."""
+    try:
+        catalog = load_catalog(catalog_path)
+    except CatalogError as e:
+        click.echo(f"Catalog error: {e}", err=True)
+        sys.exit(1)
+    rendered = render_catalog(catalog)
+
+    if check:
+        target = output_path or _default_dogmas_md_path()
+        if target is None or not target.exists():
+            click.echo(
+                f"--check: target {target} does not exist — nothing to compare.",
+                err=True,
+            )
+            sys.exit(1)
+        current = target.read_text(encoding="utf-8")
+        if current != rendered:
+            click.echo(
+                f"--check: {target} is out of sync with catalog/dogmas.yaml. "
+                "Run `archdogma render-catalog --output ...` to regenerate.",
+                err=True,
+            )
+            sys.exit(1)
+        click.echo(f"OK: {target} matches catalog/dogmas.yaml.")
+        return
+
+    if output_path is None:
+        click.echo(rendered, nl=False)
+        return
+
+    output_path.write_text(rendered, encoding="utf-8")
+    click.echo(f"Wrote {output_path} ({len(rendered)} bytes).")
+
+
+def _default_dogmas_md_path() -> Path | None:
+    """Project root DOGMAS.md, if we can locate the project."""
+    here = Path.cwd()
+    for candidate in [here, *here.parents]:
+        p = candidate / "DOGMAS.md"
+        if p.exists():
+            return p
+    return None
+
+
+# ---------------------------------------------------------------------------
+# validate-catalog — six rules from ADR-002
+# ---------------------------------------------------------------------------
+
+
+@main.command(
+    "validate-catalog",
+    help="Validate catalog/dogmas.yaml against ADR-002 rules (six rules).",
+)
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
+def validate_catalog_cmd(catalog_path: Path | None) -> None:
+    """Run the six ADR-002 validator rules. Non-zero exit on any error."""
+    try:
+        catalog = load_catalog(catalog_path)
+    except CatalogError as e:
+        click.echo(f"Catalog error: {e}", err=True)
+        sys.exit(1)
+
+    issues = validate_catalog(catalog)
+    if not issues:
+        click.echo(
+            f"OK: catalog clean ({len(catalog.dogmas)} dogmas, "
+            f"{len(catalog.candidates)} candidates). 6/6 rules pass."
+        )
+        return
+
+    click.echo(f"Found {len(issues)} issue(s):")
+    for i in issues:
+        click.echo(
+            f"  [rule {i.rule}] {i.severity:8s} {i.entity}: {i.message}"
+        )
+    if has_errors(issues):
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------

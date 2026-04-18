@@ -8,6 +8,30 @@
 ## [Unreleased]
 
 ### Added
+- **ADR-002 renderer + validator (долг закрыт)**.
+  - `src/archdogma/catalog/renderer.py`: `render_catalog(cat) -> str`.
+    Детерминистичен (bytes-identical runs), UTF-8, русский без
+    транслитерации. Первая строка — AUTO-GENERATED banner.
+    Stub-догмы получают честный placeholder вместо выдуманной прозы.
+  - `src/archdogma/catalog/validator.py`: `validate_catalog(cat) ->
+    list[ValidationIssue]`. Шесть правил из ADR-002:
+    1. `counter_dogmas[].attribution` обязан быть (honesty-bug).
+    2. `failure_cases` / `success_cases` — валидный marker
+       (`need_postmortems` / `need_data` / `need_cases`) **или**
+       список `{title, source_url, summary}`.
+    3. `id` уникален по `dogmas + candidates`.
+    4. `number` уникален **и** непрерывен от 1.
+    5. `v01_priority: true` ⇒ `status != "stub"`.
+    6. `honest_verdict.status: "final"` ⇒ непустые
+       `follow_when` + `break_when` + `main_signal`.
+  - CLI: `archdogma render-catalog [--output PATH] [--check]` —
+    последний флаг для CI (diff против committed `.md`).
+  - CLI: `archdogma validate-catalog` — exit 1 при любом error.
+  - `DOGMAS.md` теперь сгенерирован из YAML (первая строка:
+    AUTO-GENERATED banner). Правки идут в YAML.
+  - `DogmaRef` / `CandidateRef` получили `raw: dict` (compare=False,
+    repr=False) — рендерер и валидатор работают с полным YAML
+    без раздувания типов.
 - **ADR-002 wiring (gentle minimum)**: `catalog/dogmas.yaml` стал
   живым источником; `src/archdogma/catalog/loader.py` реализован —
   `DogmaRef`, `CandidateRef`, `Catalog` (frozen dataclasses), `tag_index`.
@@ -55,8 +79,14 @@
 - +5 юнитов Probe↔Catalog wiring (`tests/test_probe_catalog_wiring.py`)
 - +17 юнитов god-function (`tests/test_tier1_god_function.py`),
   +1 фикстура (`god_function_sample.py`).
-- Итого: **79/79 зелёных** (17 deep-nesting + 22 long-function +
-  17 god-function + 15 catalog-loader + 5 probe-wiring + 3 smoke).
+- +14 юнитов рендерера (`tests/test_catalog_renderer.py`) —
+  snapshot determinism, banner shape, section coverage,
+  sync-guard против committed `DOGMAS.md`.
+- +25 юнитов валидатора (`tests/test_catalog_validator.py`) —
+  positive + negative для всех 6 правил.
+- Итого: **118/118 зелёных** (17 deep-nesting + 22 long-function +
+  17 god-function + 15 catalog-loader + 14 catalog-renderer +
+  25 catalog-validator + 5 probe-wiring + 3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 
