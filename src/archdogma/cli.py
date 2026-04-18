@@ -19,8 +19,9 @@ from archdogma.catalog.renderer import render_catalog
 from archdogma.catalog.validator import has_errors, validate_catalog
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.probe.walker import (
+    DiscoveredFunction,
     ProbeResult,
-    list_top_level_functions,
+    list_all_functions,
     parse_file,
     probe_function,
 )
@@ -69,7 +70,11 @@ def main(ctx: click.Context, pretty: bool) -> None:
     "-f",
     "function_name",
     default=None,
-    help="Function name to probe. If omitted, lists top-level functions in the file.",
+    help=(
+        "Qualified function name. Dot-separated: 'foo', 'MyClass.method', "
+        "'outer.inner', 'MyClass.method.inner'. "
+        "If omitted, lists every addressable function in the file."
+    ),
 )
 @click.option(
     "--catalog",
@@ -92,17 +97,15 @@ def probe(
         click.echo(f"Parse error: {target}:{e.lineno}: {e.msg}", err=True)
         sys.exit(2)
 
-    # No function name → list functions and exit.
+    # No function name → list every addressable function and exit.
     if function_name is None:
         click.echo(f"File: {target}")
-        funcs = list_top_level_functions(tree)
-        if not funcs:
-            click.echo("No top-level functions found.")
+        discovered = list_all_functions(tree)
+        if not discovered:
+            click.echo("No functions found.")
             return
-        click.echo("Top-level functions:")
-        for f in funcs:
-            click.echo(f"- {f.name} (line {f.lineno})")
-        click.echo("\nUse --function NAME to probe one.")
+        _print_discovered_functions(discovered)
+        click.echo("\nUse --function NAME (or MyClass.method) to probe one.")
         return
 
     # Catalog is optional — probe works without it, just prints empty links.
@@ -113,14 +116,41 @@ def probe(
         click.echo(
             f"Function '{function_name}' not found in {target}.", err=True
         )
-        funcs = list_top_level_functions(tree)
-        if funcs:
-            click.echo("Top-level functions defined in this file:", err=True)
-            for f in funcs:
-                click.echo(f"- {f.name} (line {f.lineno})", err=True)
+        discovered = list_all_functions(tree)
+        if discovered:
+            click.echo("Addressable functions in this file:", err=True)
+            for df in discovered:
+                click.echo(
+                    f"- {df.qualified_name}  [{df.kind}]  (line {df.node.lineno})",
+                    err=True,
+                )
         sys.exit(1)
 
     _render_result(result, pretty=ctx.obj.get("pretty", False))
+
+
+def _print_discovered_functions(discovered: list[DiscoveredFunction]) -> None:
+    """Render the function list. Grouped by kind for readability, source order within groups."""
+    by_kind: dict[str, list[DiscoveredFunction]] = {
+        "function": [],
+        "method": [],
+        "nested": [],
+    }
+    for df in discovered:
+        by_kind.setdefault(df.kind, []).append(df)
+
+    labels = {
+        "function": "Top-level functions",
+        "method": "Methods",
+        "nested": "Nested functions",
+    }
+    for kind in ("function", "method", "nested"):
+        group = by_kind.get(kind) or []
+        if not group:
+            continue
+        click.echo(f"{labels[kind]}:")
+        for df in group:
+            click.echo(f"- {df.qualified_name} (line {df.node.lineno})")
 
 
 # ---------------------------------------------------------------------------

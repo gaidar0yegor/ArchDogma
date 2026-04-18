@@ -1,7 +1,15 @@
 """AST walker — traverses a Python function and collects signals.
 
-v0.1: supports top-level `def` / `async def`. Class methods and nested
-functions are not yet addressable — next milestone.
+v0.1-alpha3: supports top-level `def` / `async def`, class methods, and
+nested functions. Addressed by qualified name:
+
+    foo                      — top-level function
+    MyClass.method           — method of a top-level class
+    outer.inner              — nested function inside `outer`
+    MyClass.method.inner     — nested function inside a method
+    Outer.Inner.method       — method of a nested class
+
+The dot is the only separator. Names are case-sensitive.
 """
 
 from __future__ import annotations
@@ -12,6 +20,10 @@ from pathlib import Path
 
 from archdogma.catalog.loader import Catalog, CandidateRef, DogmaRef
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS, Tag
+
+
+# A FunctionDef-like node — used liberally in signatures to keep them honest.
+FuncNode = ast.FunctionDef | ast.AsyncFunctionDef
 
 
 @dataclass(frozen=True)
@@ -46,6 +58,22 @@ class ProbeResult:
         return self.line_end - self.line_start + 1
 
 
+@dataclass(frozen=True)
+class DiscoveredFunction:
+    """One addressable function in a file, with its qualified name and kind.
+
+    `kind` is a small enumeration meant for human display, not dispatch:
+        "function" — top-level def / async def
+        "method"   — def inside a class body (direct or nested class)
+        "nested"   — def inside another function
+    """
+
+    qualified_name: str
+    node: FuncNode
+    kind: str
+    container: str | None  # qualified name of the enclosing scope, or None
+
+
 def parse_file(path: Path) -> ast.Module:
     """Parse a Python file into an AST.
 
@@ -55,10 +83,12 @@ def parse_file(path: Path) -> ast.Module:
     return ast.parse(source, filename=str(path))
 
 
-def list_top_level_functions(
-    tree: ast.Module,
-) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
-    """Return top-level function definitions, in source order."""
+def list_top_level_functions(tree: ast.Module) -> list[FuncNode]:
+    """Return top-level function definitions, in source order.
+
+    Kept narrow — callers that want class methods and nested functions
+    should use `list_all_functions` instead.
+    """
     return [
         node
         for node in tree.body
@@ -66,13 +96,87 @@ def list_top_level_functions(
     ]
 
 
-def find_function(
-    tree: ast.Module, name: str
-) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
-    """Find a top-level function by name. Does not descend into classes yet."""
-    for node in list_top_level_functions(tree):
-        if node.name == name:
-            return node
+def list_all_functions(tree: ast.Module) -> list[DiscoveredFunction]:
+    """Walk the module and return every addressable function.
+
+    Returns them in a stable order: source order, depth-first.
+    Qualified names use `.` as the only separator. A method of a class
+    is `ClassName.method`; a nested function is `outer_name.inner`.
+    """
+    out: list[DiscoveredFunction] = []
+    _discover(tree.body, parent_qualified=None, parent_kind="module", out=out)
+    return out
+
+
+def _discover(
+    stmts: list[ast.stmt],
+    parent_qualified: str | None,
+    parent_kind: str,  # "module" | "class" | "function"
+    out: list[DiscoveredFunction],
+) -> None:
+    """Recursively collect function / method / nested defs in source order.
+
+    `parent_kind` determines the DiscoveredFunction.kind emitted when we
+    meet a FunctionDef at this level:
+        module   → "function"
+        class    → "method"
+        function → "nested"
+    """
+    for node in stmts:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            qualified = (
+                f"{parent_qualified}.{node.name}" if parent_qualified else node.name
+            )
+            kind = _kind_from_parent(parent_kind)
+            out.append(
+                DiscoveredFunction(
+                    qualified_name=qualified,
+                    node=node,
+                    kind=kind,
+                    container=parent_qualified,
+                )
+            )
+            # Descend — nested defs and methods on inner classes both matter.
+            _discover(node.body, qualified, "function", out)
+        elif isinstance(node, ast.ClassDef):
+            qualified = (
+                f"{parent_qualified}.{node.name}" if parent_qualified else node.name
+            )
+            # Classes themselves aren't addressable as functions, but their
+            # contents are. parent_kind becomes "class" so immediate defs
+            # are tagged as "method".
+            _discover(node.body, qualified, "class", out)
+        # Any other statement: we could descend into if/for/etc to catch
+        # conditionally defined functions, but that's deliberately out of
+        # scope — a function buried in `if os.name == "nt":` isn't a
+        # normal addressing target.
+
+
+def _kind_from_parent(parent_kind: str) -> str:
+    if parent_kind == "class":
+        return "method"
+    if parent_kind == "function":
+        return "nested"
+    return "function"
+
+
+def find_function(tree: ast.Module, name: str) -> FuncNode | None:
+    """Find a function by its qualified name.
+
+    Accepts:
+        "foo"                    — top-level def
+        "MyClass.method"         — method
+        "outer.inner"            — nested function
+        "MyClass.method.inner"   — nested inside a method
+        "Outer.Inner.method"     — method of a nested class
+
+    Returns None if the path doesn't resolve. Bare names that happen to
+    collide with a class attribute are not resolved — this function only
+    returns FunctionDef / AsyncFunctionDef.
+    """
+    for discovered in list_all_functions(tree):
+        if discovered.qualified_name == name:
+            return discovered.node
     return None
 
 

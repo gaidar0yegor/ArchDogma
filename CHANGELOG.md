@@ -68,6 +68,25 @@
   - Фикстура `tests/fixtures/god_function_sample.py::dispatch_everything`
     (209 SLOC, 18 branches) — триггерит **оба** `long-function` и
     `god-function`, оба цепляют God Class candidate в каталоге.
+- **File-level Probe** — методы классов и вложенные функции стали
+  addressable (ранее только top-level `def`). Dotted qualified names:
+  - `foo` — top-level
+  - `MyClass.method` — метод класса
+  - `outer.inner` — вложенная функция
+  - `MyClass.method.inner` — вложенная внутри метода
+  - `Outer.Inner.method` — метод вложенного класса
+  - `list_all_functions(tree) -> list[DiscoveredFunction]` —
+    depth-first source-order walk, возвращает `qualified_name`,
+    `node`, `kind` (`function`/`method`/`nested`), `container`.
+  - `find_function(tree, name)` теперь принимает dotted имя.
+    Bare `regular_method` НЕ матчится на `Outer.regular_method` —
+    partial match был бы сюрпризом и неоднозначным.
+  - CLI: `archdogma probe FILE` без `--function` группирует вывод
+    по kind (Top-level functions / Methods / Nested functions).
+  - `--function Outer.method` резолвит корректно; в сообщении
+    not-found перечисляются все addressable имена.
+  - self/cls правило `too-many-params` теперь реально работает
+    (ранее было future-proof заглушкой — Tier 1 видел только top-level).
 - **Tier 1 детектор `too-many-params`** — четвёртый тег в реестре.
   - Считает `posonly + args + kwonly` параметры, плюс `*args` и `**kwargs`
     как +1 каждый. Leading `self` / `cls` исключается (future-proof
@@ -101,10 +120,14 @@
 - +26 юнитов too-many-params (`tests/test_tier1_too_many_params.py`) —
   threshold boundary, posonly/kwonly/vararg/kwarg shape, self/cls
   exclusion, async def, tag shape + honest sources.
-- Итого: **144/144 зелёных** (17 deep-nesting + 22 long-function +
-  17 god-function + 26 too-many-params + 15 catalog-loader +
-  14 catalog-renderer + 25 catalog-validator + 5 probe-wiring +
-  3 smoke).
+- +23 юнита file-level probe (`tests/test_file_probe.py`) —
+  list_all_functions shape, qualified-name resolution, nested
+  classes/methods/defs, probe on method с self-exclusion,
+  probe на classmethod с cls-exclusion, frozen DiscoveredFunction.
+- Итого: **167/167 зелёных** (17 deep-nesting + 22 long-function +
+  17 god-function + 26 too-many-params + 23 file-probe +
+  15 catalog-loader + 14 catalog-renderer + 25 catalog-validator +
+  5 probe-wiring + 3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 
