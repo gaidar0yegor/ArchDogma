@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### Added
+- **ADR-002**: machine-readable каталог — единый YAML-источник, `DOGMAS.md`
+  генерируется. Зафиксирована schema v1, правила валидатора
+  (`attribution` обязателен для `counter_dogmas`, etc.), migration plan
+  для v0.1.0-alpha2. См.
+  [docs/adr/002-machine-readable-catalog.md](docs/adr/002-machine-readable-catalog.md).
+  Реализация рендерера и валидатора — в alpha2.
+
 ## [0.1.0-alpha1] — 2026-04-18
 
 Первый работоспособный виток **Probe-петли** — AST → детектор → тег → CLI.
