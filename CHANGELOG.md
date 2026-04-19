@@ -8,6 +8,32 @@
 ## [Unreleased]
 
 ### Added
+- **Voice Mode (Phase 1 realignment, долг Day-1 accessibility закрыт)**.
+  Voice был обещан в README как Day-1 фича и четыре коммита оставался
+  `NotImplementedError`. Теперь работает.
+  - `src/archdogma/voice/speak.py`: `speak(text) -> bool`. Никогда не
+    бросает. Порядок выбора бэкенда: native `say` (macOS) → native
+    `espeak-ng` (Linux) → `pyttsx3` (Windows / any-OS fallback) →
+    поздний `espeak-ng` на не-Linux, если вдруг установлен. Все сбои
+    (FileNotFoundError, TimeoutExpired, RuntimeError от pyttsx3 при
+    отсутствии аудио-драйвера) проглатываются: возвращается `False` +
+    одна дедуплицированная строка в stderr. CLI не падает.
+  - CLI: у `archdogma probe` появился флаг `--speak`. Озвучивает
+    короткий summary ("Two tags found: long function, too many params.
+    Trust score unknown."). Plain-text stdout побайтно идентичен
+    запуску без `--speak` — voice это **аддитивный** канал.
+  - Синтезатор предложения (`_synthesize_spoken_summary`):
+    pluralization singular/plural, числа до 10 словами (`One`/`Two`/
+    ... `Ten`), ≥11 — цифрами. Kebab-case теги гуманизируются
+    (`long-function` → "long function"), иначе TTS произносит дефисы.
+    До Phase 2 (Trust Score) sentence всегда заканчивается честным
+    "Trust score unknown." — молчать было бы нечестно.
+  - Open question ответ #1: `cli.py` сам строит строку и передаёт
+    plain `str` в `speak()`. Voice-слой не знает про `ProbeResult` —
+    dumb sink, легко тестируется, легко менять backend.
+  - Open question ответ #2: для Phase 2 git-blame вне репозитория →
+    `age_median = "unknown"` (не exception, не zero). Честный `unknown`
+    > выдуманная метрика.
 - **ADR-002 renderer + validator (долг закрыт)**.
   - `src/archdogma/catalog/renderer.py`: `render_catalog(cat) -> str`.
     Детерминистичен (bytes-identical runs), UTF-8, русский без
@@ -108,6 +134,14 @@
 - `pyyaml >= 6.0` (каталог-лоадер).
 
 ### Tests
+- +16 юнитов voice speak (`tests/test_voice_speak.py`) —
+  backend selection per-platform, subprocess failure modes
+  (FileNotFoundError / TimeoutExpired), pyttsx3 import-vs-runtime
+  failure, empty/whitespace no-op, warning dedup.
+- +13 юнитов CLI speak wiring (`tests/test_cli_speak.py`) —
+  sentence synthesis (0/1/N tag формы, humanize, pluralize, numbers),
+  `--speak` flag accepted, stdout byte-identical с/без флага,
+  backend failure не крашит CLI.
 - +15 юнитов loader'а (`tests/test_catalog_loader.py`)
 - +5 юнитов Probe↔Catalog wiring (`tests/test_probe_catalog_wiring.py`)
 - +17 юнитов god-function (`tests/test_tier1_god_function.py`),
@@ -124,10 +158,10 @@
   list_all_functions shape, qualified-name resolution, nested
   classes/methods/defs, probe on method с self-exclusion,
   probe на classmethod с cls-exclusion, frozen DiscoveredFunction.
-- Итого: **167/167 зелёных** (17 deep-nesting + 22 long-function +
+- Итого: **196/196 зелёных** (17 deep-nesting + 22 long-function +
   17 god-function + 26 too-many-params + 23 file-probe +
   15 catalog-loader + 14 catalog-renderer + 25 catalog-validator +
-  5 probe-wiring + 3 smoke).
+  5 probe-wiring + 16 voice-speak + 13 cli-speak + 3 smoke).
 
 ## [0.1.0-alpha1] — 2026-04-18
 

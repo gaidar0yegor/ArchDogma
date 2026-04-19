@@ -25,6 +25,7 @@ from archdogma.probe.walker import (
     parse_file,
     probe_function,
 )
+from archdogma.voice.speak import speak
 
 
 # ---------------------------------------------------------------------------
@@ -83,12 +84,25 @@ def main(ctx: click.Context, pretty: bool) -> None:
     default=None,
     help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
 )
+@click.option(
+    "--speak",
+    "speak_flag",
+    is_flag=True,
+    default=False,
+    help=(
+        "Additionally speak a short summary aloud. "
+        "Plain-text stdout is unchanged. Voice is additive — if no TTS "
+        "backend is found, the CLI prints a one-line stderr warning and "
+        "continues. Never crashes over a missing audio device."
+    ),
+)
 @click.pass_context
 def probe(
     ctx: click.Context,
     target: Path,
     function_name: str | None,
     catalog_path: Path | None,
+    speak_flag: bool,
 ) -> None:
     """Analyze one top-level function from a Python file."""
     try:
@@ -127,6 +141,8 @@ def probe(
         sys.exit(1)
 
     _render_result(result, pretty=ctx.obj.get("pretty", False))
+    if speak_flag:
+        _speak_result(result)
 
 
 def _print_discovered_functions(discovered: list[DiscoveredFunction]) -> None:
@@ -452,6 +468,72 @@ def _render_pretty(result: ProbeResult) -> None:
             label = link.entry_title
         links.add_row(link.tag_name, label, link.entry_kind)
     console.print(links)
+
+
+# ---------------------------------------------------------------------------
+# Voice summary
+# ---------------------------------------------------------------------------
+
+
+def _speak_result(result: ProbeResult) -> None:
+    """Synthesize a short spoken summary of a ProbeResult.
+
+    Open-question answer (per user, 2026-04-19): cli.py is the right place to
+    construct the spoken string. `speak()` takes plain text — it doesn't need
+    to know about ProbeResult shape. Keeps the voice layer dumb and the CLI
+    responsible for phrasing. Easy to test, easy to swap backends.
+
+    Trust score is advertised as "unknown" on purpose — Phase 2 of the
+    realignment plan delivers it; until then, honesty beats silence.
+    """
+    sentence = _synthesize_spoken_summary(result)
+    speak(sentence)
+
+
+def _synthesize_spoken_summary(result: ProbeResult) -> str:
+    """Turn a ProbeResult into a short English sentence suitable for TTS.
+
+    Examples:
+        0 tags   → "No tags detected. Trust score unknown."
+        1 tag    → "One tag found: long function. Trust score unknown."
+        N tags   → "Two tags found: long function, too many params.
+                    Trust score unknown."
+
+    Humanizes kebab-case tag names to natural English so `say` and
+    `espeak-ng` don't spell out dashes.
+    """
+    n = len(result.tags)
+    trust_clause = "Trust score unknown."
+    if n == 0:
+        return f"No tags detected. {trust_clause}"
+    word_count = _number_word(n)
+    noun = "tag" if n == 1 else "tags"
+    humanized = ", ".join(_humanize_tag_name(t.name) for t in result.tags)
+    return f"{word_count} {noun} found: {humanized}. {trust_clause}"
+
+
+_NUMBER_WORDS = {
+    1: "One",
+    2: "Two",
+    3: "Three",
+    4: "Four",
+    5: "Five",
+    6: "Six",
+    7: "Seven",
+    8: "Eight",
+    9: "Nine",
+    10: "Ten",
+}
+
+
+def _number_word(n: int) -> str:
+    """Spoken form for small numbers; digits above ten."""
+    return _NUMBER_WORDS.get(n, str(n))
+
+
+def _humanize_tag_name(name: str) -> str:
+    """`long-function` → `long function`. TTS-friendly."""
+    return name.replace("-", " ")
 
 
 if __name__ == "__main__":
