@@ -1,5 +1,9 @@
 # ArchDogma
 
+<div align="center">
+  <img src="docs/assets/archdogma-badge.jpg" alt="ArchDogma badge" width="300">
+</div>
+
 > **Let me tell you a story.**
 
 Разбирает одну функцию — честно, без выдуманных чисел.
