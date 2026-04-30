@@ -13,31 +13,31 @@ _Обновлено: 2026-04-18 — schema v1._
 
 ## §1. 100% Test Coverage  \[stub\]
 
-**Определение.** Всё должно быть покрыто unit-тестами. Непокрытый код — это риск.
+**Определение.** Everything must be covered by unit tests. Uncovered code is a risk.
 
-**Origin.** TDD-движение, Kent Beck, Uncle Bob, XP.
+**Origin.** TDD movement, Kent Beck, Uncle Bob, XP.
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
-## §2. Clean Architecture / N слоёв абстракции  \[stub\]
+## §2. Clean Architecture / N Layers of Abstraction  \[stub\]
 
-**Определение.** Разделяй код на слои (domain, application, infrastructure, presentation). Зависимости идут внутрь.
+**Определение.** Split code into layers (domain, application, infrastructure, presentation). Dependencies point inward.
 
-**Origin.** Uncle Bob, «Clean Architecture». Ранее Hexagonal/Onion Architecture.
+**Origin.** Uncle Bob, «Clean Architecture». Previously Hexagonal/Onion Architecture.
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
 ## §3. DRY (Don't Repeat Yourself) 🎯  \[filled\]
 
-**Определение.** Никогда не копипасть. Любое повторение — кандидат на абстракцию.
+**Определение.** Never copy-paste. Any repetition is a candidate for abstraction.
 
 **Origin.** «The Pragmatic Programmer», Hunt & Thomas, 1999.
 
 **Условия провала.**
 
-- Когда две похожие вещи объединяются в одну абстракцию, а потом расходятся.
-- Shared libraries между командами с разными release-циклами.
-- Слишком ранняя абстракция (до 3-го реального use case).
+- When two similar things are merged into one abstraction and then diverge.
+- Shared libraries between teams with different release cycles.
+- Too early abstraction (before the 3rd real use case).
 
 **Failure cases.**
 
@@ -49,46 +49,46 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 **Контр-догмы.**
 
-- **WET (Write Everything Twice)** — _folk, анонимный_
-  > Пока не увидел повторение дважды — не абстрагируй.
+- **WET (Write Everything Twice)** — _folk, anonymous_
+  > Don't abstract until you've seen the repetition twice.
 - **Rule of Three** — _Don Roberts via Martin Fowler, «Refactoring» (1999)_
-  > Три повторения — только тогда кандидат на абстракцию.
+  > Three repetitions — only then a candidate for abstraction.
 - **The Wrong Abstraction** — _Sandi Metz, 2016_ ([source](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction))
   > Duplication is far cheaper than the wrong abstraction.
 - **AHA (Avoid Hasty Abstractions)** — _Kent C. Dodds, 2019_ ([source](https://kentcdodds.com/blog/aha-programming))
-  > Раньше в каталоге AHA ошибочно атрибутировался Sandi Metz — это разные авторы.
+  > Previously in the catalog AHA was incorrectly attributed to Sandi Metz — these are different authors.
 
 **Honest verdict** \[draft_awaiting_cases\].
 
 _Следуй догме, когда:_
 
-- Повторяется знание (бизнес-правило, формула, инвариант), а не форма кода.
-- Ты видишь третье повторение (Rule of Three), и все три вызываются из одного контекста / одной командой / одного релизного цикла.
-- Цена ошибочной абстракции ниже цены дубля.
+- Knowledge repeats (business rule, formula, invariant), not code form.
+- You see the third repetition (Rule of Three), and all three are called from the same context / same team / same release cycle.
+- Cost of a wrong abstraction is lower than cost of duplication.
 
 _Ломай догму, когда:_
 
-- Два куска кода выглядят одинаково, но меняются по разным причинам (разные стейкхолдеры, разные релиз-циклы, разные домены).
-- Абстракция пересекает границу команд или сервисов.
-- Есть только 1–2 повторения, и ты ещё не видел, как оно реально меняется.
-- Код — исследовательский / одноразовый.
+- Two code pieces look the same but change for different reasons (different stakeholders, different release cycles, different domains).
+- The abstraction crosses team or service boundaries.
+- There are only 1–2 repetitions and you haven't seen how it actually changes yet.
+- Code is exploratory / throwaway.
 
-**Main signal:** Каждое новое требование добавляет в «общую» функцию if-флаг. Это не расширение — это признание, что ты склеил две разные вещи.
+**Main signal:** Every new requirement adds an if-flag to the 'shared' function. That's not extension — that's admission you glued two different things together.
 
 **Related tags:** `wrong-abstraction`.
 
-## §4. Microservices для всего 🎯  \[filled\]
+## §4. Microservices for Everything 🎯  \[filled\]
 
-**Определение.** Монолит — зло. Режь систему на маленькие сервисы.
+**Определение.** Monolith is evil. Cut the system into small services.
 
 **Origin.** Netflix, Amazon, ThoughtWorks, ~2014.
 
 **Условия провала.**
 
-- Команда < 10 человек.
-- Один продукт, не независимые бизнес-юниты.
-- Distributed transactions становятся нормой.
-- Debug занимает 3 часа, потому что trace разлетается по 12 сервисам.
+- Team < 10 people.
+- One product, not independent business units.
+- Distributed transactions become the norm.
+- Debug takes 3 hours because traces scatter across 12 services.
 
 **Failure cases.**
 
@@ -96,38 +96,38 @@ _Ломай догму, когда:_
 
 **Success cases.**
 
-- Netflix, Amazon (на определённом масштабе) — Нужны конкретные ссылки на post-mortems с числами.
+- Netflix, Amazon (at a certain scale) — Need specific post-mortem links with numbers.
 
 **Контр-догмы.**
 
 - **MonolithFirst** — _Martin Fowler, 2015_ ([source](https://martinfowler.com/bliki/MonolithFirst.html))
-  > Почти все успешные микросервисные системы начинались как монолиты и были распилены позже.
-- **Modular Monolith** — _Shopify и другие_
-  > Модули с чёткими границами внутри одного процесса. Без сетевых границ, но с возможностью разделить позже.
+  > Almost all successful microservice systems started as monoliths and were split later.
+- **Modular Monolith** — _Shopify and others_
+  > Modules with clear boundaries inside one process. No network boundaries, but with the ability to split later.
 - **Prime Video monolith migration** — _Amazon Prime Video Tech Blog, 2023_ ([source](https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90))
-  > Переход от serverless/микросервисов обратно к монолиту со снижением инфраструктурных затрат на 90%.
+  > Moving from serverless/microservices back to monolith with 90% reduction in infrastructure costs.
 
 **Honest verdict** \[draft_awaiting_cases\].
 
 _Следуй догме, когда:_
 
-- У тебя действительно несколько независимых бизнес-доменов с разными командами, релизными циклами и масштабом.
-- Команда больше 10–15 человек и уже есть конкретная боль от монолита.
-- Ты готов платить операционную цену распределённой системы.
+- You genuinely have multiple independent business domains with different teams, release cycles, and scale.
+- Team is larger than 10–15 people and there's concrete pain from the monolith already.
+- You're willing to pay the operational cost of a distributed system.
 
 _Ломай догму, когда:_
 
-- Команда < 10 человек и/или один продукт.
-- Проект в фазе стартапа / MVP — домен ещё не устоялся.
-- Появляются distributed transactions или debug-сессии, где trace разлетается по 5+ сервисам.
-- Основная боль — в сложности бизнес-логики, а не в масштабе.
+- Team < 10 people and/or one product.
+- Project is in startup / MVP phase — domain hasn't stabilized yet.
+- Distributed transactions or debug sessions appear where traces scatter across 5+ services.
+- The main pain is in business logic complexity, not scale.
 
-**Main signal:** Distributed monolith — куча мелких сервисов, которые всё равно меняются вместе и деплоятся вместе, но теперь ещё через сеть.
+**Main signal:** Distributed monolith — a bunch of small services that still change together and deploy together, but now over the network.
 
 
-## §5. OOP как единственная истина (наследование везде)  \[stub\]
+## §5. OOP as the Only Truth (inheritance everywhere)  \[stub\]
 
-**Определение.** Всё — объект. Наследование — главный инструмент переиспользования.
+**Определение.** Everything is an object. Inheritance is the primary tool for reuse.
 
 **Origin.** Smalltalk, Java, GoF Design Patterns.
 
@@ -137,14 +137,14 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 ## §6. TDD (Test-Driven Development) 🎯  \[filled\]
 
-**Определение.** Red-Green-Refactor. Сначала пишем тест, потом код.
+**Определение.** Red-Green-Refactor. Write the test first, then the code.
 
 **Origin.** Kent Beck.
 
 **Условия провала.**
 
-- Неизвестная область — ещё не знаешь, каким должен быть API.
-- UI-код, визуализации.
+- Unknown domain — you don't yet know what the API should look like.
+- UI code, visualizations.
 - Research / exploratory coding.
 
 **Failure cases.**
@@ -158,43 +158,43 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 **Контр-догмы.**
 
 - **Spike First** — _Kent Beck, «Extreme Programming Explained» (1999)_
-  > В неизвестной области сначала spike (одноразовый прототип без тестов), потом выбрасывается, потом переписывается через TDD.
-- **Test After / Test Last** — _folk, контр-практика_
-  > Тесты пишутся после реализации, когда API уже устоялся. Область: UI, exploratory, research.
+  > In an unknown domain, first a spike (throwaway prototype without tests), then discard it, then rewrite with TDD.
+- **Test After / Test Last** — _folk, counter-practice_
+  > Tests are written after implementation, when the API has stabilized. Domain: UI, exploratory, research.
 - **Characterization Testing** — _Michael Feathers, «Working Effectively with Legacy Code» (2004)_
-  > Для legacy без тестов: тест фиксирует текущее поведение, чтобы рефакторить безопасно.
+  > For legacy without tests: test locks in current behavior so you can refactor safely.
 - **TDD is dead. Long live testing.** — _DHH (David Heinemeier Hansson), 2014_ ([source](https://dhh.dk/2014/tdd-is-dead-long-live-testing.html))
-  > TDD как идеология привела к over-mocking и дизайну под тесты вместо дизайна под задачу.
+  > TDD as ideology led to over-mocking and designing for tests instead of designing for the problem.
 
 **Honest verdict** \[draft_awaiting_cases\].
 
 _Следуй догме, когда:_
 
-- Ты уже понимаешь домен и примерно знаешь, каким должен быть API.
-- Работаешь над стабильной бизнес-логикой, которую планируешь рефакторить.
-- Цена ошибки в проде очень высокая (финансы, безопасность, медицина, биллинг).
+- You already understand the domain and roughly know what the API should look like.
+- Working on stable business logic you plan to refactor.
+- Cost of a production error is very high (finance, security, medicine, billing).
 
 _Ломай догму, когда:_
 
-- Ты в неизвестной области — используй Spike First.
-- Работаешь с UI, сложными визуальными состояниями или внешними интеграциями — Test After.
-- Работаешь с legacy без тестов — Characterization Testing.
-- Прототип / proof of concept, который будет выброшен через неделю.
+- You're in an unknown domain — use Spike First.
+- Working with UI, complex visual states, or external integrations — Test After.
+- Working with legacy without tests — Characterization Testing.
+- Prototype / proof of concept that will be thrown away in a week.
 
-**Main signal:** Ты пишешь тест раньше, чем понял, что код должен делать. Результат — хорошо протестированный неправильный дизайн + лес моков.
+**Main signal:** You write a test before you understood what the code should do. Result — well-tested wrong design + a forest of mocks.
 
 
-## §7. SOLID как закон  \[stub\]
+## §7. SOLID as Law  \[stub\]
 
-**Определение.** SRP, OCP, LSP, ISP, DIP — пять принципов, которым должен следовать весь код.
+**Определение.** SRP, OCP, LSP, ISP, DIP — five principles all code must follow.
 
-**Origin.** Uncle Bob, 2000-е.
+**Origin.** Uncle Bob, 2000s.
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
-## §8. Self-documenting code (комментарии не нужны)  \[stub\]
+## §8. Self-documenting code (no comments needed)  \[stub\]
 
-**Определение.** Хороший код читается без комментариев. Комментарии — признак непонятного кода.
+**Определение.** Good code reads without comments. Comments are a sign of unclear code.
 
 **Origin.** Uncle Bob, «Clean Code».
 
@@ -202,17 +202,17 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 ## §9. Premature optimization is the root of all evil  \[stub\]
 
-**Определение.** Не оптимизируй, пока не профилировал. (Обычно цитируется без контекста.)
+**Определение.** Don't optimize until you've profiled. (Usually cited without context.)
 
-**Origin.** Donald Knuth, 1974. Полная цитата: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»
+**Origin.** Donald Knuth, 1974. Full quote: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
-## §10. Functional purity / Immutability везде  \[stub\]
+## §10. Functional purity / Immutability everywhere  \[stub\]
 
-**Определение.** Избегай мутаций. Чистые функции. Никаких side effects.
+**Определение.** Avoid mutations. Pure functions. No side effects.
 
-**Origin.** Haskell-сообщество, FP-ренессанс 2010-х, React/Redux.
+**Origin.** Haskell community, FP renaissance of the 2010s, React/Redux.
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
@@ -222,19 +222,19 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 ### God File / God Class  \[god-class\]
 
-Антипаттерн-следствие, не догма. Появляется от страха рефакторинга + отсутствия тестов + дедлайнов.
+Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tests + deadlines.
 
 **Источники.**
 
-- [SQLite amalgamation — осознанное решение ради производительности (~238k строк)](https://sqlite.org/amalgamation.html)
-- [Knight Capital 2012 — $440M от dead code в legacy](https://www.sec.gov/litigation/admin/2013/34-70694.pdf)
+- [SQLite amalgamation — deliberate performance decision (~238k lines)](https://sqlite.org/amalgamation.html)
+- [Knight Capital 2012 — $440M from dead code in legacy](https://www.sec.gov/litigation/admin/2013/34-70694.pdf)
 - Michael Feathers, «Working Effectively with Legacy Code» (2004)
 
 **Related tags:** `god-function`, `god-class`, `long-function`.
 
 ### Long Parameter List  \[long-parameter-list\]
 
-Классический code smell — когда сигнатура требует слишком многого, её обычно можно разбить на parameter object, keyword-only namespace или две разные функции.
+Classic code smell — when a signature demands too much, it can usually be split into a parameter object, keyword-only namespace, or two different functions.
 
 **Источники.**
 
@@ -249,37 +249,37 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 ### KISS (Keep It Simple, Stupid)  \[kiss\]
 
 
-### Agile и его ритуалы  \[agile-rituals\]
+### Agile and its rituals  \[agile-rituals\]
 
 
-### Конфигурация вместо кода  \[config-over-code\]
+### Configuration over code  \[config-over-code\]
 
 
-### Serverless для всего  \[serverless-everything\]
+### Serverless for everything  \[serverless-everything\]
 
 
-### GraphQL вместо REST  \[graphql-over-rest\]
+### GraphQL over REST  \[graphql-over-rest\]
 
 
-### NoSQL вместо SQL  \[nosql-over-sql\]
+### NoSQL over SQL  \[nosql-over-sql\]
 
 
 ### Event Sourcing  \[event-sourcing\]
 
 
-### Domain-Driven Design как обязательная практика  \[ddd-mandatory\]
+### Domain-Driven Design as mandatory practice  \[ddd-mandatory\]
 
 
-### Code reviews должны быть обязательными всегда  \[code-reviews-mandatory\]
+### Code reviews must always be mandatory  \[code-reviews-mandatory\]
 
 
-### Feature flags вместо веток  \[feature-flags-over-branches\]
+### Feature flags over branches  \[feature-flags-over-branches\]
 
 
-### Монорепо vs полирепо  \[monorepo-vs-polyrepo\]
+### Monorepo vs polyrepo  \[monorepo-vs-polyrepo\]
 
 
-### Pair programming всегда  \[pair-programming-always\]
+### Pair programming always  \[pair-programming-always\]
 
 
 ---

@@ -1,15 +1,15 @@
 # ArchDogma catalog — machine-readable source of truth per ADR-002.
 #
 # Statuses:
-#   stub    = заголовок и определение есть, кейсов нет
-#   draft   = есть черновой honest_verdict, но без реальных post-mortems
-#   filled  = заполнено полностью (для v0.1 — три приоритетные догмы)
+#   stub    = title and definition exist, no cases yet
+#   draft   = has a draft honest_verdict, but no real post-mortems
+#   filled  = fully filled (for v0.1 — three priority dogmas)
 #
-# Правила:
-#   - каждая counter_dogma обязана иметь attribution (валидатор — в alpha3)
-#   - related_tags — имена Tier 1/2/... детекторов, которые мэппятся на догму
-#   - пустой related_tags означает: «догма существует не на уровне функции»
-#     (DRY/Microservices — не детектируются по одной функции, это честно)
+# Rules:
+#   - every counter_dogma must have attribution (validator — in alpha3)
+#   - related_tags — names of Tier 1/2/... detectors that map to this dogma
+#   - empty related_tags means: "dogma doesn't exist at function level"
+#     (DRY/Microservices — not detectable from a single function, that's honest)
 
 schema_version: 1
 updated: 2026-04-18
@@ -23,20 +23,20 @@ dogmas:
     number: 1
     title: "100% Test Coverage"
     status: stub
-    definition: "Всё должно быть покрыто unit-тестами. Непокрытый код — это риск."
-    origin: "TDD-движение, Kent Beck, Uncle Bob, XP."
-    related_tags: []  # требует Tier 4 coverage data, не уровень функции
+    definition: "Everything must be covered by unit tests. Uncovered code is a risk."
+    origin: "TDD movement, Kent Beck, Uncle Bob, XP."
+    related_tags: []  # requires Tier 4 coverage data, not function level
 
   # -------------------------------------------------------------------------
-  # 2. Clean Architecture / N слоёв — stub
+  # 2. Clean Architecture / N layers — stub
   # -------------------------------------------------------------------------
   - id: clean-architecture
     number: 2
-    title: "Clean Architecture / N слоёв абстракции"
+    title: "Clean Architecture / N Layers of Abstraction"
     status: stub
-    definition: "Разделяй код на слои (domain, application, infrastructure, presentation). Зависимости идут внутрь."
-    origin: "Uncle Bob, «Clean Architecture». Ранее Hexagonal/Onion Architecture."
-    related_tags: []  # file/module-level, не функция
+    definition: "Split code into layers (domain, application, infrastructure, presentation). Dependencies point inward."
+    origin: "Uncle Bob, «Clean Architecture». Previously Hexagonal/Onion Architecture."
+    related_tags: []  # file/module-level, not function
 
   # -------------------------------------------------------------------------
   # 3. DRY — v0.1 priority, filled
@@ -46,24 +46,24 @@ dogmas:
     title: "DRY (Don't Repeat Yourself)"
     v01_priority: true
     status: filled
-    definition: "Никогда не копипасть. Любое повторение — кандидат на абстракцию."
+    definition: "Never copy-paste. Any repetition is a candidate for abstraction."
     origin: "«The Pragmatic Programmer», Hunt & Thomas, 1999."
 
     failure_conditions:
-      - "Когда две похожие вещи объединяются в одну абстракцию, а потом расходятся."
-      - "Shared libraries между командами с разными release-циклами."
-      - "Слишком ранняя абстракция (до 3-го реального use case)."
+      - "When two similar things are merged into one abstraction and then diverge."
+      - "Shared libraries between teams with different release cycles."
+      - "Too early abstraction (before the 3rd real use case)."
 
     failure_cases: need_postmortems
     success_cases: need_data
 
     counter_dogmas:
       - name: "WET (Write Everything Twice)"
-        attribution: "folk, анонимный"
-        thesis: "Пока не увидел повторение дважды — не абстрагируй."
+        attribution: "folk, anonymous"
+        thesis: "Don't abstract until you've seen the repetition twice."
       - name: "Rule of Three"
         attribution: "Don Roberts via Martin Fowler, «Refactoring» (1999)"
-        thesis: "Три повторения — только тогда кандидат на абстракцию."
+        thesis: "Three repetitions — only then a candidate for abstraction."
       - name: "The Wrong Abstraction"
         attribution: "Sandi Metz, 2016"
         source_url: "https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction"
@@ -71,20 +71,20 @@ dogmas:
       - name: "AHA (Avoid Hasty Abstractions)"
         attribution: "Kent C. Dodds, 2019"
         source_url: "https://kentcdodds.com/blog/aha-programming"
-        thesis: "Раньше в каталоге AHA ошибочно атрибутировался Sandi Metz — это разные авторы."
+        thesis: "Previously in the catalog AHA was incorrectly attributed to Sandi Metz — these are different authors."
 
     honest_verdict:
       status: draft_awaiting_cases
       follow_when:
-        - "Повторяется знание (бизнес-правило, формула, инвариант), а не форма кода."
-        - "Ты видишь третье повторение (Rule of Three), и все три вызываются из одного контекста / одной командой / одного релизного цикла."
-        - "Цена ошибочной абстракции ниже цены дубля."
+        - "Knowledge repeats (business rule, formula, invariant), not code form."
+        - "You see the third repetition (Rule of Three), and all three are called from the same context / same team / same release cycle."
+        - "Cost of a wrong abstraction is lower than cost of duplication."
       break_when:
-        - "Два куска кода выглядят одинаково, но меняются по разным причинам (разные стейкхолдеры, разные релиз-циклы, разные домены)."
-        - "Абстракция пересекает границу команд или сервисов."
-        - "Есть только 1–2 повторения, и ты ещё не видел, как оно реально меняется."
-        - "Код — исследовательский / одноразовый."
-      main_signal: "Каждое новое требование добавляет в «общую» функцию if-флаг. Это не расширение — это признание, что ты склеил две разные вещи."
+        - "Two code pieces look the same but change for different reasons (different stakeholders, different release cycles, different domains)."
+        - "The abstraction crosses team or service boundaries."
+        - "There are only 1–2 repetitions and you haven't seen how it actually changes yet."
+        - "Code is exploratory / throwaway."
+      main_signal: "Every new requirement adds an if-flag to the 'shared' function. That's not extension — that's admission you glued two different things together."
 
     related_tags:
       - wrong-abstraction  # future Tier 5 — detect via divergent call-sites + if-on-parameter inside shared fn
@@ -94,60 +94,60 @@ dogmas:
   # -------------------------------------------------------------------------
   - id: microservices
     number: 4
-    title: "Microservices для всего"
+    title: "Microservices for Everything"
     v01_priority: true
     status: filled
-    definition: "Монолит — зло. Режь систему на маленькие сервисы."
+    definition: "Monolith is evil. Cut the system into small services."
     origin: "Netflix, Amazon, ThoughtWorks, ~2014."
 
     failure_conditions:
-      - "Команда < 10 человек."
-      - "Один продукт, не независимые бизнес-юниты."
-      - "Distributed transactions становятся нормой."
-      - "Debug занимает 3 часа, потому что trace разлетается по 12 сервисам."
+      - "Team < 10 people."
+      - "One product, not independent business units."
+      - "Distributed transactions become the norm."
+      - "Debug takes 3 hours because traces scatter across 12 services."
 
     failure_cases: need_postmortems
     success_cases:
-      - title: "Netflix, Amazon (на определённом масштабе)"
+      - title: "Netflix, Amazon (at a certain scale)"
         source_url: null
-        summary: "Нужны конкретные ссылки на post-mortems с числами."
+        summary: "Need specific post-mortem links with numbers."
 
     counter_dogmas:
       - name: "MonolithFirst"
         attribution: "Martin Fowler, 2015"
         source_url: "https://martinfowler.com/bliki/MonolithFirst.html"
-        thesis: "Почти все успешные микросервисные системы начинались как монолиты и были распилены позже."
+        thesis: "Almost all successful microservice systems started as monoliths and were split later."
       - name: "Modular Monolith"
-        attribution: "Shopify и другие"
-        thesis: "Модули с чёткими границами внутри одного процесса. Без сетевых границ, но с возможностью разделить позже."
+        attribution: "Shopify and others"
+        thesis: "Modules with clear boundaries inside one process. No network boundaries, but with the ability to split later."
       - name: "Prime Video monolith migration"
         attribution: "Amazon Prime Video Tech Blog, 2023"
         source_url: "https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
-        thesis: "Переход от serverless/микросервисов обратно к монолиту со снижением инфраструктурных затрат на 90%."
+        thesis: "Moving from serverless/microservices back to monolith with 90% reduction in infrastructure costs."
 
     honest_verdict:
       status: draft_awaiting_cases
       follow_when:
-        - "У тебя действительно несколько независимых бизнес-доменов с разными командами, релизными циклами и масштабом."
-        - "Команда больше 10–15 человек и уже есть конкретная боль от монолита."
-        - "Ты готов платить операционную цену распределённой системы."
+        - "You genuinely have multiple independent business domains with different teams, release cycles, and scale."
+        - "Team is larger than 10–15 people and there's concrete pain from the monolith already."
+        - "You're willing to pay the operational cost of a distributed system."
       break_when:
-        - "Команда < 10 человек и/или один продукт."
-        - "Проект в фазе стартапа / MVP — домен ещё не устоялся."
-        - "Появляются distributed transactions или debug-сессии, где trace разлетается по 5+ сервисам."
-        - "Основная боль — в сложности бизнес-логики, а не в масштабе."
-      main_signal: "Distributed monolith — куча мелких сервисов, которые всё равно меняются вместе и деплоятся вместе, но теперь ещё через сеть."
+        - "Team < 10 people and/or one product."
+        - "Project is in startup / MVP phase — domain hasn't stabilized yet."
+        - "Distributed transactions or debug sessions appear where traces scatter across 5+ services."
+        - "The main pain is in business logic complexity, not scale."
+      main_signal: "Distributed monolith — a bunch of small services that still change together and deploy together, but now over the network."
 
-    related_tags: []  # системный уровень, не детектируется на одной функции
+    related_tags: []  # system level, not detectable from a single function
 
   # -------------------------------------------------------------------------
-  # 5. OOP как единственная истина — stub
+  # 5. OOP as the only truth — stub
   # -------------------------------------------------------------------------
   - id: oop-everywhere
     number: 5
-    title: "OOP как единственная истина (наследование везде)"
+    title: "OOP as the Only Truth (inheritance everywhere)"
     status: stub
-    definition: "Всё — объект. Наследование — главный инструмент переиспользования."
+    definition: "Everything is an object. Inheritance is the primary tool for reuse."
     origin: "Smalltalk, Java, GoF Design Patterns."
     related_tags:
       - deep-inheritance  # future Tier 1 detector
@@ -160,12 +160,12 @@ dogmas:
     title: "TDD (Test-Driven Development)"
     v01_priority: true
     status: filled
-    definition: "Red-Green-Refactor. Сначала пишем тест, потом код."
+    definition: "Red-Green-Refactor. Write the test first, then the code."
     origin: "Kent Beck."
 
     failure_conditions:
-      - "Неизвестная область — ещё не знаешь, каким должен быть API."
-      - "UI-код, визуализации."
+      - "Unknown domain — you don't yet know what the API should look like."
+      - "UI code, visualizations."
       - "Research / exploratory coding."
 
     failure_cases: need_postmortems
@@ -174,54 +174,54 @@ dogmas:
     counter_dogmas:
       - name: "Spike First"
         attribution: "Kent Beck, «Extreme Programming Explained» (1999)"
-        thesis: "В неизвестной области сначала spike (одноразовый прототип без тестов), потом выбрасывается, потом переписывается через TDD."
+        thesis: "In an unknown domain, first a spike (throwaway prototype without tests), then discard it, then rewrite with TDD."
       - name: "Test After / Test Last"
-        attribution: "folk, контр-практика"
-        thesis: "Тесты пишутся после реализации, когда API уже устоялся. Область: UI, exploratory, research."
+        attribution: "folk, counter-practice"
+        thesis: "Tests are written after implementation, when the API has stabilized. Domain: UI, exploratory, research."
       - name: "Characterization Testing"
         attribution: "Michael Feathers, «Working Effectively with Legacy Code» (2004)"
-        thesis: "Для legacy без тестов: тест фиксирует текущее поведение, чтобы рефакторить безопасно."
+        thesis: "For legacy without tests: test locks in current behavior so you can refactor safely."
       - name: "TDD is dead. Long live testing."
         attribution: "DHH (David Heinemeier Hansson), 2014"
         source_url: "https://dhh.dk/2014/tdd-is-dead-long-live-testing.html"
-        thesis: "TDD как идеология привела к over-mocking и дизайну под тесты вместо дизайна под задачу."
+        thesis: "TDD as ideology led to over-mocking and designing for tests instead of designing for the problem."
 
     honest_verdict:
       status: draft_awaiting_cases
       follow_when:
-        - "Ты уже понимаешь домен и примерно знаешь, каким должен быть API."
-        - "Работаешь над стабильной бизнес-логикой, которую планируешь рефакторить."
-        - "Цена ошибки в проде очень высокая (финансы, безопасность, медицина, биллинг)."
+        - "You already understand the domain and roughly know what the API should look like."
+        - "Working on stable business logic you plan to refactor."
+        - "Cost of a production error is very high (finance, security, medicine, billing)."
       break_when:
-        - "Ты в неизвестной области — используй Spike First."
-        - "Работаешь с UI, сложными визуальными состояниями или внешними интеграциями — Test After."
-        - "Работаешь с legacy без тестов — Characterization Testing."
-        - "Прототип / proof of concept, который будет выброшен через неделю."
-      main_signal: "Ты пишешь тест раньше, чем понял, что код должен делать. Результат — хорошо протестированный неправильный дизайн + лес моков."
+        - "You're in an unknown domain — use Spike First."
+        - "Working with UI, complex visual states, or external integrations — Test After."
+        - "Working with legacy without tests — Characterization Testing."
+        - "Prototype / proof of concept that will be thrown away in a week."
+      main_signal: "You write a test before you understood what the code should do. Result — well-tested wrong design + a forest of mocks."
 
-    related_tags: []  # требует Tier 4 (coverage + test structure), не статический анализ функции
+    related_tags: []  # requires Tier 4 (coverage + test structure), not static function analysis
 
   # -------------------------------------------------------------------------
-  # 7. SOLID как закон — stub
+  # 7. SOLID as law — stub
   # -------------------------------------------------------------------------
   - id: solid
     number: 7
-    title: "SOLID как закон"
+    title: "SOLID as Law"
     status: stub
-    definition: "SRP, OCP, LSP, ISP, DIP — пять принципов, которым должен следовать весь код."
-    origin: "Uncle Bob, 2000-е."
-    related_tags: []  # файл/модуль-уровень
+    definition: "SRP, OCP, LSP, ISP, DIP — five principles all code must follow."
+    origin: "Uncle Bob, 2000s."
+    related_tags: []  # file/module level
 
   # -------------------------------------------------------------------------
   # 8. Self-documenting code — stub
   # -------------------------------------------------------------------------
   - id: self-documenting-code
     number: 8
-    title: "Self-documenting code (комментарии не нужны)"
+    title: "Self-documenting code (no comments needed)"
     status: stub
-    definition: "Хороший код читается без комментариев. Комментарии — признак непонятного кода."
+    definition: "Good code reads without comments. Comments are a sign of unclear code."
     origin: "Uncle Bob, «Clean Code»."
-    related_tags: []  # требует анализа comment-to-code ratio, не чисто AST
+    related_tags: []  # requires comment-to-code ratio analysis, not purely AST
 
   # -------------------------------------------------------------------------
   # 9. Premature optimization — stub
@@ -230,8 +230,8 @@ dogmas:
     number: 9
     title: "Premature optimization is the root of all evil"
     status: stub
-    definition: "Не оптимизируй, пока не профилировал. (Обычно цитируется без контекста.)"
-    origin: "Donald Knuth, 1974. Полная цитата: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»"
+    definition: "Don't optimize until you've profiled. (Usually cited without context.)"
+    origin: "Donald Knuth, 1974. Full quote: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»"
     related_tags: []
 
   # -------------------------------------------------------------------------
@@ -239,37 +239,37 @@ dogmas:
   # -------------------------------------------------------------------------
   - id: functional-purity
     number: 10
-    title: "Functional purity / Immutability везде"
+    title: "Functional purity / Immutability everywhere"
     status: stub
-    definition: "Избегай мутаций. Чистые функции. Никаких side effects."
-    origin: "Haskell-сообщество, FP-ренессанс 2010-х, React/Redux."
+    definition: "Avoid mutations. Pure functions. No side effects."
+    origin: "Haskell community, FP renaissance of the 2010s, React/Redux."
     related_tags: []
 
 # -----------------------------------------------------------------------------
-# Кандидаты — догмы и антипаттерны, которые ещё не разобраны до уровня полного
-# каталога. Могут быть promoted до dogmas как только накопятся кейсы.
+# Candidates — dogmas and anti-patterns not yet broken down to full catalog level.
+# Can be promoted to dogmas once enough cases accumulate.
 # -----------------------------------------------------------------------------
 
 candidates:
   - id: god-class
     title: "God File / God Class"
-    note: "Антипаттерн-следствие, не догма. Появляется от страха рефакторинга + отсутствия тестов + дедлайнов."
+    note: "Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tests + deadlines."
     sources:
-      - title: "SQLite amalgamation — осознанное решение ради производительности (~238k строк)"
+      - title: "SQLite amalgamation — deliberate performance decision (~238k lines)"
         url: "https://sqlite.org/amalgamation.html"
-      - title: "Knight Capital 2012 — $440M от dead code в legacy"
+      - title: "Knight Capital 2012 — $440M from dead code in legacy"
         url: "https://www.sec.gov/litigation/admin/2013/34-70694.pdf"
       - title: "Michael Feathers, «Working Effectively with Legacy Code» (2004)"
         url: null
-    # Будет promoted в dogmas когда god-function / god-class детекторы стабилизируются
+    # Will be promoted to dogmas when god-function / god-class detectors stabilize
     related_tags:
       - god-function  # pending (alpha2/alpha3)
-      - god-class     # pending (alpha3+, нужен class probe)
+      - god-class     # pending (alpha3+, needs class probe)
       - long-function
 
   - id: long-parameter-list
     title: "Long Parameter List"
-    note: "Классический code smell — когда сигнатура требует слишком многого, её обычно можно разбить на parameter object, keyword-only namespace или две разные функции."
+    note: "Classic code smell — when a signature demands too much, it can usually be split into a parameter object, keyword-only namespace, or two different functions."
     sources:
       - title: "Martin Fowler, «Refactoring» (1999/2018) — Long Parameter List"
         url: null
@@ -283,24 +283,24 @@ candidates:
   - id: kiss
     title: "KISS (Keep It Simple, Stupid)"
   - id: agile-rituals
-    title: "Agile и его ритуалы"
+    title: "Agile and its rituals"
   - id: config-over-code
-    title: "Конфигурация вместо кода"
+    title: "Configuration over code"
   - id: serverless-everything
-    title: "Serverless для всего"
+    title: "Serverless for everything"
   - id: graphql-over-rest
-    title: "GraphQL вместо REST"
+    title: "GraphQL over REST"
   - id: nosql-over-sql
-    title: "NoSQL вместо SQL"
+    title: "NoSQL over SQL"
   - id: event-sourcing
     title: "Event Sourcing"
   - id: ddd-mandatory
-    title: "Domain-Driven Design как обязательная практика"
+    title: "Domain-Driven Design as mandatory practice"
   - id: code-reviews-mandatory
-    title: "Code reviews должны быть обязательными всегда"
+    title: "Code reviews must always be mandatory"
   - id: feature-flags-over-branches
-    title: "Feature flags вместо веток"
+    title: "Feature flags over branches"
   - id: monorepo-vs-polyrepo
-    title: "Монорепо vs полирепо"
+    title: "Monorepo vs polyrepo"
   - id: pair-programming-always
-    title: "Pair programming всегда"
+    title: "Pair programming always"

@@ -6,84 +6,84 @@ Accepted — 2026-04-18.
 
 ## Context
 
-Нужно выбрать форму доставки v0.1 ArchDogma. Три кандидата рассматривались (см. обсуждение 2026-04-18): Python CLI, Web app, VSCode/IDE extension.
+We need to choose the delivery form for ArchDogma v0.1. Three candidates were considered (see discussion 2026-04-18): Python CLI, Web app, VSCode/IDE extension.
 
-Ключевые критерии отбора:
-- Accessibility с первого дня (требование манифеста в README).
-- Голосовой режим локально, без сетевой зависимости.
-- Один язык (Python уже выбран как язык AST-анализа).
-- Минимум технологий и scope creep в v0.1.
-- Минимальный time-to-first-probe.
+Key selection criteria:
+- Accessibility from day one (requirement from the manifest in README).
+- Voice mode locally, without network dependency.
+- One language (Python already chosen as the AST analysis language).
+- Minimum technologies and scope creep in v0.1.
+- Minimum time-to-first-probe.
 
 ## Decision
 
-v0.1 ArchDogma реализуется как **Python CLI**.
+ArchDogma v0.1 is implemented as a **Python CLI**.
 
-**Стек:**
-- Python `>=3.11` (stdlib `tomllib`, `ast` достаточно современный, pattern matching доступен)
+**Stack:**
+- Python `>=3.11` (stdlib `tomllib`, `ast` is modern enough, pattern matching available)
 - `click` — CLI framework
-- `rich` — опциональный pretty-output, **выключаемый** через `--plain` (см. ниже)
-- `pyttsx3` — cross-platform TTS; с fallback на субпроцесс к нативным `say` (macOS) / `espeak-ng` (Linux) / SAPI (Windows)
-- `gitpython` — опционально, для Tier 3 тегов (`old-code`, `high-churn`)
+- `rich` — optional pretty-output, **disableable** via `--plain` (see below)
+- `pyttsx3` — cross-platform TTS; with fallback to subprocess of native `say` (macOS) / `espeak-ng` (Linux) / SAPI (Windows)
+- `gitpython` — optional, for Tier 3 tags (`old-code`, `high-churn`)
 - `pytest` + `ruff` + `mypy` — dev
 
 **Build backend:** `hatchling`. **Layout:** `src/archdogma`.
 
-**Инверсия дефолта вывода (принципиально):**
-Обычный CLI-подход — rich-форматирование по умолчанию, `--plain` как fallback. Мы делаем **наоборот**: plain structured text по умолчанию (parseable screen reader'ом), rich-форматирование через `--pretty`. Это прямое следствие манифеста «accessibility — не фича».
+**Output default inversion (a matter of principle):**
+The typical CLI approach is rich formatting by default, `--plain` as fallback. We do the **opposite**: plain structured text by default (parseable by screen readers), rich formatting via `--pretty`. This is a direct consequence of the "accessibility is not a feature" manifesto.
 
 ## Consequences
 
 ### Positive
 
-- Screen readers работают в терминале из коробки на Linux/macOS.
-- Голос через локальный TTS без сетевой зависимости.
-- Один язык — один CI, один тест-раннер, одна экосистема зависимостей.
-- `pip install -e .` → `archdogma probe <file>` — работающая команда с первого коммита.
-- CLI встраивается в pre-commit хуки, CI-пайплайны, IDE tasks без дополнительных оберток.
-- Самый низкий time-to-first-probe из трёх вариантов.
-- Web-UI поверх CLI-ядра остаётся возможным для v0.2+ без переписывания.
+- Screen readers work in the terminal out of the box on Linux/macOS.
+- Voice via local TTS without network dependency.
+- One language — one CI, one test runner, one dependency ecosystem.
+- `pip install -e .` → `archdogma probe <file>` — a working command from the first commit.
+- CLI integrates into pre-commit hooks, CI pipelines, IDE tasks without extra wrappers.
+- Lowest time-to-first-probe of the three options.
+- Web UI on top of CLI core remains possible for v0.2+ without rewriting.
 
 ### Negative
 
-- Windows TTS из `pyttsx3` слабее, чем native macOS `say` / Linux `espeak-ng`. Документируем как known limitation.
-- Графическая визуализация AST отсутствует. Теги выводятся текстом (файл + строка + колонка + описание). Tree-визуализация в CLI возможна, но не IDE-уровень.
-- Не встраивается в редактор — юзер переключает контекст между IDE и терминалом.
-- Для не-developer юзеров CLI — барьер. В v0.1 это **явно out of scope**: ArchDogma v0.1 — tool для инженеров.
+- Windows TTS quality from `pyttsx3` is weaker than native macOS `say` / Linux `espeak-ng`. Documented as known limitation.
+- No graphical AST visualization. Tags are output as text (file + line + column + description). Tree visualization in CLI is possible, but not IDE-level.
+- Not embedded in the editor — user switches context between IDE and terminal.
+- For non-developer users, CLI is a barrier. In v0.1 this is **explicitly out of scope**: ArchDogma v0.1 is a tool for engineers.
 
 ### Neutral
 
-- IDE extension возможен в v0.2+ через subprocess к CLI (compromise, но работающий паттерн — так делают `ruff`, `mypy`, `pytest` integrations).
-- Web UI возможен в v0.2+ как тонкая FastAPI-обёртка поверх CLI-ядра.
+- IDE extension is possible in v0.2+ via subprocess to CLI (compromise, but a working pattern — this is how `ruff`, `mypy`, `pytest` integrations work).
+- Web UI is possible in v0.2+ as a thin FastAPI wrapper over the CLI core.
 
-## Alternatives considered
+## Alternatives Considered
 
-### Web app — rejected для v0.1
+### Web app — rejected for v0.1
 
-- AST-анализ требует либо отдельный Python backend (двойной стек), либо tree-sitter WASM в браузере (усложнение).
-- Screen reader совместимость в web — ручная работа под WCAG 2.1 AA, не freebie.
-- Хостинг / деплой / HTTPS / логи — ops, которого в v0.1 быть не должно.
-- Time-to-v0.1 удлиняется минимум на 3–4 недели.
+- AST analysis requires either a separate Python backend (dual stack) or tree-sitter WASM in the browser (added complexity).
+- Screen reader compatibility on web is manual work under WCAG 2.1 AA, not a freebie.
+- Hosting / deploy / HTTPS / logs — ops that shouldn't exist in v0.1.
+- Time-to-v0.1 extends by at least 3–4 weeks.
 
-### VSCode/IDE extension — rejected для v0.1
+### VSCode/IDE extension — rejected for v0.1
 
-- TypeScript/JS стек рядом с Python = два языка, два CI, два тест-раннера.
-- Market охватывается только VSCode — JetBrains/Neovim users остаются за бортом.
-- Голос в IDE требует desktop-hack или external TTS bridge.
-- Extension review process добавляет время релиза.
-- Time-to-v0.1 удлиняется минимум на 3–4 недели.
+- TypeScript/JS stack alongside Python = two languages, two CIs, two test runners.
+- Market covered only by VSCode — JetBrains/Neovim users left behind.
+- Voice in IDE requires a desktop-hack or external TTS bridge.
+- Extension review process adds release time.
+- Time-to-v0.1 extends by at least 3–4 weeks.
 
-Оба варианта остаются открытыми для v0.2+. CLI-ядро проектируется так, чтобы его можно было вызвать как subprocess из web или extension.
+Both options remain open for v0.2+. The CLI core is designed so it can be called as a subprocess from web or extension.
 
-## Known limitations v0.1, принятые явно
+## Known Limitations of v0.1, Explicitly Accepted
 
-- **Windows TTS качество** — ниже, чем на macOS/Linux. Документируем.
-- **Нет graphical AST visualization.** Output — текст.
-- **Нет machine-readable формата каталога.** `DOGMAS.md` пока только human-readable. Для связки Probe → Dogma нужен либо YAML frontmatter на каждую догму, либо отдельный `catalog/index.yaml`. Это следующий ADR.
-- **Tier 5 тегов (семантика) не делаем** — см. `AST_TAGS_DRAFT.md`.
+- **Windows TTS quality** — lower than on macOS/Linux. Documented.
+- **No graphical AST visualization.** Output is text.
+- **No machine-readable catalog format.** `DOGMAS.md` for now is human-readable only. For Probe → Dogma linkage, either YAML frontmatter per dogma or a separate `catalog/index.yaml` is needed. That's the next ADR.
+- **Tier 5 tags (semantics) not implemented** — see `AST_TAGS_DRAFT.md`.
 
-## Expected next ADRs
+## Expected Next ADRs
 
-- **ADR-002:** Machine-readable формат каталога догм (frontmatter vs отдельный index).
-- **ADR-003:** Trust Score формула — конкретные входящие сигналы и веса.
-- **ADR-004:** Голосовой режим — точный TTS backend и shape output под screen readers.
+- **ADR-002:** Machine-readable format for the dogma catalog (frontmatter vs separate index).
+- **ADR-003:** Trust Score formula — specific input signals and weights.
+- **ADR-004:** Voice mode — exact TTS backend and output shape for screen readers.

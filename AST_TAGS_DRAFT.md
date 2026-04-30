@@ -1,152 +1,152 @@
 # AST Tags — v0.1 Draft
 
-> ⚠️ **Статус: DRAFT.** Черновик словаря тегов, которые Function Probe может ставить на AST. Каждый порог — либо с источником, либо с явной пометкой `[default, configurable, эвристика]`. Без этого мы превращаемся в ту самую догму, от которой предостерегаем.
+> ⚠️ **Status: DRAFT.** Draft vocabulary of tags that Function Probe can assign via AST analysis. Every threshold either has a source or is explicitly marked `[default, configurable, heuristic]`. Without this we become the very dogma we're warning against.
 
-## Правила (из DOGMAS.md, применяем рекурсивно к себе)
+## Rules (from DOGMAS.md, applied recursively to ourselves)
 
-1. **Порог без источника = пометка `[default]`.** Не пишем «функция болеет на 200 строк» как истину.
-2. **Семантика признаётся семантикой.** Если тег требует понимания намерения кода — честно говорим «не v0.1, галлюцинация без ground truth».
-3. **Сегрегация по способу детекции.** AST-тег, git-тег и coverage-тег — три разных механизма, не одна штука.
-4. **v0.1 — минимальный набор.** Лучше 4 честных тега, чем 25 полу-работающих.
+1. **Threshold without source = mark `[default]`.** We don't write "function breaks at 200 lines" as fact.
+2. **Semantics is acknowledged as semantics.** If a tag requires understanding code intent — we honestly say "not v0.1, hallucination without ground truth".
+3. **Segregation by detection method.** AST-tag, git-tag, and coverage-tag are three different mechanisms, not one thing.
+4. **v0.1 — minimal set.** Better 4 honest tags than 25 half-working ones.
 
 ---
 
-## Тиры детекции
+## Detection Tiers
 
-| Тир | Что требуется | Пример |
+| Tier | What's Required | Example |
 |---|---|---|
-| **1** | Чистый AST одного файла | `deep-nesting`, `long-function` |
+| **1** | Pure AST of one file | `deep-nesting`, `long-function` |
 | **2** | AST + cross-file usage graph | `premature-abstraction`, `heavy-di` |
-| **3** | Git история | `old-code`, `high-churn` |
-| **4** | Внешний coverage report | `no-tests`, `low-coverage` |
-| **5** | Семантика / интент (NLP) | `wrong-abstraction` (broad), `ritual-tests`, `self-documenting-fail` |
+| **3** | Git history | `old-code`, `high-churn` |
+| **4** | External coverage report | `no-tests`, `low-coverage` |
+| **5** | Semantics / intent (NLP) | `wrong-abstraction` (broad), `ritual-tests`, `self-documenting-fail` |
 
-**v0.1 target:** Tier 1 целиком, Tier 3 как bonus. Tier 2 и 4 — post-v0.1. Tier 5 — **не делаем**, иначе галлюцинация.
+**v0.1 target:** Tier 1 in full, Tier 3 as bonus. Tier 2 and 4 — post-v0.1. Tier 5 — **not doing it**, otherwise hallucination.
 
 ---
 
-## Tier 1 — чистый AST single-file (v0.1 targets)
+## Tier 1 — Pure AST Single-File (v0.1 targets)
 
 ### `deep-nesting`
-Максимальная глубина вложенности control flow (`if`/`for`/`while`/`try`/`with`) в функции.
-- **Порог:** `≥ 4` `[default, configurable]`
-- **Источник:** Cognitive Complexity (Sonarsource, 2017) использует nesting как взвешенный фактор. Единого research-backed абсолютного порога нет.
-- **Связка с догмами:** §2 Clean Architecture (косвенно), §8 Self-documenting code.
+Maximum nesting depth of control flow (`if`/`for`/`while`/`try`/`with`) in a function.
+- **Threshold:** `≥ 4` `[default, configurable]`
+- **Source:** Cognitive Complexity (Sonarsource, 2017) uses nesting as a weighted factor. No single research-backed absolute threshold exists.
+- **Dogma links:** §2 Clean Architecture (indirect), §8 Self-documenting code.
 
 ### `long-function`
-LOC функции без пустых строк и комментариев.
-- **Порог:** `≥ 80` `[default, configurable, эвристика]`
-- **Источник:** Нет. Числа 50/80/100 гуляют по стайл-гайдам без исследовательской базы.
-- **Связка с догмами:** §8 Self-documenting code.
+LOC of function without blank lines and comments.
+- **Threshold:** `≥ 80` `[default, configurable, heuristic]`
+- **Source:** None. Numbers 50/80/100 float around style guides without research backing.
+- **Dogma links:** §8 Self-documenting code.
 
 ### `god-function`
-Экстремальная длина ИЛИ ветвистость.
-- **Порог:** `≥ 200 LOC` ИЛИ `≥ 15 точек ветвления` `[default, configurable, эвристика]`
-- **Источник:** Нет. McCabe 1976 даёт cyclomatic complexity `≥ 10` как сигнал — это ближайший research-backed ориентир, и его стоит считать *вместо* или *рядом с* нашим порогом.
-- **Связка с догмами:** §8 Self-documenting, §2 Clean Architecture.
+Extreme length OR branching.
+- **Threshold:** `≥ 200 LOC` OR `≥ 15 branch points` `[default, configurable, heuristic]`
+- **Source:** None. McCabe 1976 gives cyclomatic complexity `≥ 10` as a signal — this is the closest research-backed reference, and should be considered *instead of* or *alongside* our threshold.
+- **Dogma links:** §8 Self-documenting, §2 Clean Architecture.
 
 ### `god-class`
-Класс непомерного размера.
-- **Порог:** `≥ 500 LOC` ИЛИ `≥ 25 публичных методов` `[default, configurable, эвристика]`
-- **Источник:** Нет universal threshold. Chidamber-Kemerer метрики (1994) дают WMC и RFC, но без абсолютных порогов.
-- **Связка с догмами:** §5 OOP (God Class), §2 Clean Architecture.
+Class of excessive size.
+- **Threshold:** `≥ 500 LOC` OR `≥ 25 public methods` `[default, configurable, heuristic]`
+- **Source:** No universal threshold. Chidamber-Kemerer metrics (1994) give WMC and RFC, but without absolute thresholds.
+- **Dogma links:** §5 OOP (God Class), §2 Clean Architecture.
 
-### `deep-inheritance` (single-file слой)
-Глубина цепочки наследования класса, видимая в пределах одного файла.
-- **Порог:** `≥ 4` `[эвристика]`
-- **Источник:** DIT (Depth of Inheritance Tree) — Chidamber & Kemerer, 1994. Basili/Briand/Melo (1996) показали корреляцию DIT с дефектами, но без единого порога. На практике цитируется 5-6 как «точно больно».
-- **Ограничение v0.1:** если базовый класс в другом файле — не ловим. Полный chain — это Tier 2.
-- **Связка с догмами:** §5 OOP.
+### `deep-inheritance` (single-file layer)
+Depth of a class's inheritance chain, visible within one file.
+- **Threshold:** `≥ 4` `[heuristic]`
+- **Source:** DIT (Depth of Inheritance Tree) — Chidamber & Kemerer, 1994. Basili/Briand/Melo (1996) showed correlation between DIT and defects, but without a single threshold. In practice 5-6 is cited as "definitely painful".
+- **v0.1 limitation:** if the base class is in another file — not caught. Full chain is Tier 2.
+- **Dogma links:** §5 OOP.
 
-### `if-on-parameter` (узкая версия wrong-abstraction)
-Функция содержит `≥ N` if/elif-ветвлений, сравнивающих один и тот же параметр с литералами. Классика «флажок управляет поведением».
-- **Порог:** `≥ 3` ветвления на один и тот же параметр `[default, configurable]`
-- **Источник:** Нет формального, но это прямое операциональное выражение тезиса Sandi Metz «The Wrong Abstraction» (2016).
-- **Важно:** это **узкая, честная** версия тега. Широкий «wrong-abstraction» как «код объединяет разные поведения» — Tier 5, не делаем.
-- **Связка с догмами:** §3 DRY (главный сигнал промаха abstraction-а).
+### `if-on-parameter` (narrow version of wrong-abstraction)
+Function contains `≥ N` if/elif branches comparing the same parameter to literals. Classic "flag controls behavior".
+- **Threshold:** `≥ 3` branches on the same parameter `[default, configurable]`
+- **Source:** No formal one, but this is a direct operational expression of Sandi Metz's thesis "The Wrong Abstraction" (2016).
+- **Important:** this is the **narrow, honest** version of the tag. Broad "wrong-abstraction" as "code joins different behaviors" — Tier 5, not doing it.
+- **Dogma links:** §3 DRY (main signal of abstraction miss).
 
 ### `magic-numbers`
-Численные литералы в коде, не присвоенные именованной константе. Исключаем `0`, `1`, `-1`.
-- **Порог:** `≥ 5` на функцию `[default, configurable, эвристика]`
-- **Источник:** Нет.
-- **Связка с догмами:** §8 Self-documenting code.
+Numeric literals in code not assigned to a named constant. Excluding `0`, `1`, `-1`.
+- **Threshold:** `≥ 5` per function `[default, configurable, heuristic]`
+- **Source:** None.
+- **Dogma links:** §8 Self-documenting code.
 
 ### `dynamic-magic` (Python-specific)
-Использование `getattr`/`setattr`/`delattr`/`eval`/`exec`/`__import__` в функции.
-- **Порог:** любое вхождение (бинарный тег).
-- **Источник:** Python docs сами рекомендуют осторожность; не research, а консенсус.
-- **Связка с догмами:** §8 Self-documenting code, §5 OOP (runtime-переписывание).
+Use of `getattr`/`setattr`/`delattr`/`eval`/`exec`/`__import__` in a function.
+- **Threshold:** any occurrence (binary tag).
+- **Source:** Python docs themselves recommend caution; not research, but consensus.
+- **Dogma links:** §8 Self-documenting code, §5 OOP (runtime rewriting).
 
 ---
 
-## Tier 3 — git-based (v0.1 bonus, если успеем)
+## Tier 3 — Git-Based (v0.1 bonus, if time allows)
 
 ### `old-code`
-Файл последний раз изменялся более `N` лет назад.
-- **Порог:** `> 3 года` `[default, configurable]`
-- **Детекция:** `git log -1 --format=%ad -- <file>`.
-- **Связка с догмами:** не прямая; используется как мультипликатор Trust Score.
+File was last changed more than `N` years ago.
+- **Threshold:** `> 3 years` `[default, configurable]`
+- **Detection:** `git log -1 --format=%ad -- <file>`.
+- **Dogma links:** not direct; used as a Trust Score multiplier.
 
 ### `high-churn`
-Файл менялся `≥ N` раз за последние `M` месяцев.
-- **Порог:** `≥ 15 коммитов за 6 месяцев` `[default, configurable, эвристика]`
-- **Источник:** Адам Торнхилл, «Your Code as a Crime Scene» (2015) — hotspots через churn + complexity. Идея устоявшаяся, конкретных порогов нет.
-- **Связка с догмами:** не прямая; сигнал «здесь постоянно латают», снижает Trust Score.
+File changed `≥ N` times in the last `M` months.
+- **Threshold:** `≥ 15 commits in 6 months` `[default, configurable, heuristic]`
+- **Source:** Adam Tornhill, "Your Code as a Crime Scene" (2015) — hotspots via churn + complexity. The idea is established; specific thresholds are not.
+- **Dogma links:** not direct; signal "constantly being patched here", lowers Trust Score.
 
 ---
 
-## Tier 2 — cross-file (post-v0.1)
+## Tier 2 — Cross-File (post-v0.1)
 
-Требуют построения usage graph по проекту. В v0.1 **не делаем** — state space и производительность.
+Require building a usage graph across the project. In v0.1 **not doing it** — state space and performance.
 
-- `premature-abstraction` — класс/функция, вызываемые из ≤ 2 мест.
-- `heavy-di` — класс с `≥ 6` зависимостями через конструктор.
-- `deep-inheritance` (полный chain через файлы).
-
----
-
-## Tier 4 — coverage-data (post-v0.1)
-
-Требуют внешнего артефакта — `.coverage`, pytest report или manifest. В v0.1 **не делаем** — нет гарантии, что у юзера он есть.
-
-- `no-tests` — для функции нет связанного теста (по naming heuristic или импорту).
-- `low-coverage` — покрытие функции `< 30%`.
-- `test-heavy` — файл `≥ 70%` тестового кода по отношению к production.
+- `premature-abstraction` — class/function called from ≤ 2 places.
+- `heavy-di` — class with `≥ 6` dependencies via constructor.
+- `deep-inheritance` (full chain across files).
 
 ---
 
-## Tier 5 — семантика (НЕ делаем в v0.1)
+## Tier 4 — Coverage Data (post-v0.1)
 
-Требуют понимания намерения кода. Без ground truth = галлюцинация. Явный запрет в v0.1.
+Require an external artifact — `.coverage`, pytest report, or manifest. In v0.1 **not doing it** — no guarantee the user has one.
 
-- ❌ `wrong-abstraction` (broad version) — «абстракция объединяет разные поведения».
-- ❌ `ritual-tests` — «тест есть, но ничего не проверяет».
-- ❌ `self-documenting-fail` — «имя не объясняет intent».
-- ❌ `monkey-patching` — частично AST-детектируемо, но «плохое» vs «необходимое» — семантика.
-
-Если когда-нибудь появится reliable ground truth (проверяемый signal, не LLM-мнение) — вернёмся. Пока — в игноре.
+- `no-tests` — function has no associated test (by naming heuristic or import).
+- `low-coverage` — function coverage `< 30%`.
+- `test-heavy` — file is `≥ 70%` test code relative to production.
 
 ---
 
-## Связка тегов с приоритетными догмами v0.1
+## Tier 5 — Semantics (NOT doing in v0.1)
 
-| Догма | Связанные теги Tier 1 | Честность связки |
+Require understanding code intent. Without ground truth = hallucination. Explicit ban in v0.1.
+
+- ❌ `wrong-abstraction` (broad version) — "abstraction joins different behaviors".
+- ❌ `ritual-tests` — "test exists but checks nothing".
+- ❌ `self-documenting-fail` — "name doesn't explain intent".
+- ❌ `monkey-patching` — partially AST-detectable, but "bad" vs "necessary" is semantics.
+
+If reliable ground truth ever appears (verifiable signal, not LLM opinion) — we'll come back. For now — ignored.
+
+---
+
+## Tag-to-Dogma Mapping for v0.1 Priority Dogmas
+
+| Dogma | Related Tier 1 Tags | Linkage Honesty |
 |---|---|---|
-| **§3 DRY** | `if-on-parameter` | ✅ прямая связка |
-| **§6 TDD** | *(требует Tier 4 — coverage)* | ⚠️ нет прямого Tier 1 сигнала |
-| **§4 Microservices** | *(не применимо на уровне функции)* | ❌ honest gap |
+| **§3 DRY** | `if-on-parameter` | ✅ direct link |
+| **§6 TDD** | *(requires Tier 4 — coverage)* | ⚠️ no direct Tier 1 signal |
+| **§4 Microservices** | *(not applicable at function level)* | ❌ honest gap |
 
-### Honest gap №1: §6 TDD
-На уровне функции без coverage-report мы не можем сказать «эта функция не протестирована». Можно сделать naming heuristic («функция `foo` → ищем `test_foo` в `tests/` или `_test.py`»), но это Tier 4-light. В v0.1 либо принимаем этот компромисс, либо честно говорим: связка §6 TDD работает только когда юзер передал coverage report.
+### Honest Gap #1: §6 TDD
+At function level without a coverage report we can't say "this function is untested". A naming heuristic is possible ("function `foo` → look for `test_foo` in `tests/` or `_test.py`"), but that's Tier 4-light. In v0.1 either accept this compromise, or honestly say: §6 TDD linkage works only when the user passes a coverage report.
 
-### Honest gap №2: §4 Microservices
-Function Probe работает на уровне функции. Microservices — про организационный дизайн и границы сервисов. Связки на уровне функции нет и не будет. Честно: догма §4 в v0.1 подсвечивается каталогом как ссылка, но не триггерится Probe-ом. Ждёт уровня **Модуль/Сервис** из лестницы README.
+### Honest Gap #2: §4 Microservices
+Function Probe works at function level. Microservices is about organizational design and service boundaries. There's no link at function level and there won't be. Honest: dogma §4 in v0.1 is surfaced by the catalog as a reference, but not triggered by Probe. Waiting for the **Module/Service** level from the README ladder.
 
 ---
 
-## v0.1 минимальный target set (конкретно)
+## v0.1 Minimal Target Set (Specific)
 
-**Реализуем 6 тегов:**
+**Implementing 6 tags:**
 1. `deep-nesting`
 2. `long-function`
 3. `god-function`
@@ -154,28 +154,28 @@ Function Probe работает на уровне функции. Microservices 
 5. `deep-inheritance` (single-file)
 6. `if-on-parameter`
 
-**Если успеем — ещё 2:**
+**If time allows — 2 more:**
 7. `magic-numbers`
 8. `dynamic-magic`
 
-**Tier 3 — если остаётся время:**
+**Tier 3 — if time remains:**
 9. `old-code`
 10. `high-churn`
 
-Всё. Никаких Tier 2/4/5 в v0.1.
+That's it. No Tier 2/4/5 in v0.1.
 
 ---
 
-## Что НЕ делаем в v0.1 (открыто)
+## What We're NOT Doing in v0.1 (Openly)
 
-- Никакой семантики (Tier 5).
-- Никакого usage graph (Tier 2).
-- Никакого coverage integration (Tier 4).
-- Никаких «обычно команды ломаются на X» — любой порог либо с источником, либо с пометкой `[default]`.
-- Никаких тегов, которые мы не можем объяснить на одной строчке кода.
+- No semantics (Tier 5).
+- No usage graph (Tier 2).
+- No coverage integration (Tier 4).
+- No "teams typically break at X" — any threshold either has a source or is marked `[default]`.
+- No tags we can't explain in one line of code.
 
 ---
 
-## Следующий шаг после этого draft
+## Next Step After This Draft
 
-Выбрать форму доставки (CLI / web / VSCode ext). Без неё любая YAML/JSON сериализация тегов — работа в стол. Обсуждение стека — в следующем раунде.
+Choose the delivery form (CLI / web / VSCode ext). Without it any YAML/JSON tag serialization is work with no destination. Stack discussion — next round.

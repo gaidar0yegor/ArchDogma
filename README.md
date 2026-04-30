@@ -6,122 +6,122 @@
 
 > **Let me tell you a story.**
 
-Разбирает одну функцию — честно, без выдуманных чисел.
-Показывает священные правила программирования — с реальными пост-мортемами, не с гороскопом.
+Analyzes one function — honestly, without made-up numbers.
+Shows sacred rules of programming — with real post-mortems, not horoscopes.
 
-Две проверяемые штуки. Не одна красивая.
-
----
-
-## Зачем это существует
-
-90% времени ты не пишешь новый код. Ты пытаешься понять старый. Комментарии врут. Имена функций врут. Документация устарела ещё до того, как её дописали. Запустить легаси, чтобы понять, как оно работает — это не понимание, это русская рулетка.
-
-А ещё ты постоянно натыкаешься на догмы. «Всегда пиши тесты», «никакого копипаста», «чистый код прежде всего», «OOP или ты не серьёзный». Никто не говорит, **когда** эти правила начинают душить систему.
-
-ArchDogma берётся и за то, и за другое.
+Two verifiable things. Not one beautiful one.
 
 ---
 
-## Из чего состоит
+## Why This Exists
+
+90% of the time you're not writing new code. You're trying to understand old code. Comments lie. Function names lie. Documentation was outdated before it was even finished. Running legacy code to understand how it works isn't understanding — it's Russian roulette.
+
+And you keep running into dogmas. "Always write tests", "no copy-paste", "clean code above all", "OOP or you're not serious". Nobody tells you **when** these rules start strangling the system.
+
+ArchDogma takes on both problems.
+
+---
+
+## What It's Made Of
 
 ### Function Probe
 
-Разбор одной функции. Проверяемо.
+Analysis of one function. Verifiable.
 
-- Что она реально делает (не что написано в комментариях)
-- Какие скрытые assumptions в ней сидят
-- Где она с наибольшей вероятностью выстрелит в ногу
-- Trust Score — насколько ей можно верить
+- What it actually does (not what the comments say)
+- What hidden assumptions are baked in
+- Where it's most likely to shoot you in the foot
+- Trust Score — how much you can rely on it
 
-Ground truth здесь проверяется: AST, типы, exceptions, реальное исполнение. Никаких «экспертных» чисел из воздуха.
+Ground truth is verified here: AST, types, exceptions, actual execution. No "expert" numbers pulled from thin air.
 
 ### Catalog of Dogmas
 
-Каталог священных коров программирования — с **реальными** пост-мортемами.
+A catalog of programming's sacred cows — with **real** post-mortems.
 
-Каждая догма:
-- Что говорит
-- При каких параметрах начинает душить
-- Реальные кейсы краха со ссылками
-- Честный вывод
+Each dogma covers:
+- What it says
+- Under what conditions it starts to strangle
+- Real failure cases with links
+- An honest verdict
 
-Если ссылки нет — стоит `[NEED POSTMORTEMS]`. Выдумывать нельзя (см. [правила каталога](DOGMAS.md)).
+If there's no link — it's marked `[NEED POSTMORTEMS]`. Making things up is not allowed (see [catalog rules](DOGMAS.md)).
 
-### Как они связаны — конкретный пример
+### How They Connect — A Concrete Example
 
-Function Probe находит в функции 7 уровней наследования → ставит тег `deep-inheritance`.
-Каталог по этому тегу возвращает: «Вот 2 реальных кейса, где `deep-inheritance` стал раком мозга: [ссылка], [ссылка]. Типичные параметры: команда > 10, возраст кода > 3 лет.»
+Function Probe finds 7 levels of inheritance in a function → tags it `deep-inheritance`.
+The Catalog for that tag returns: "Here are 2 real cases where `deep-inheritance` became a brain tumor: [link], [link]. Typical parameters: team > 10, code age > 3 years."
 
-Не абстрактный совет «попробуй проще». А: «вот кто уже поскользнулся, вот как выглядело падение».
+Not an abstract "try to simplify". But: "here's who already slipped, here's what the fall looked like".
 
-В v0.1 связь реализована тупо и честно — через pattern-match по AST. Никакой семантической магии. Когда pattern-match перестанет работать, честно добавим что-то умнее.
-
----
-
-## Что реально в v0.1 (честный скоуп)
-
-- **Function Probe** для одной Python-функции — AST-разбор, типичные паттерны (`deep-inheritance`, `n-layers-deep`, `test-heavy`), Trust Score на проверяемых сигналах (возраст кода, покрытие тестами, сложность)
-- **3 полностью заполненные догмы** в каталоге с реальными ссылками на пост-мортемы:
-  1. **Microservices для всего** (Segment, Prime Video, и компания)
-  2. **TDD как закон** (DHH, 2014)
-  3. **DRY / преждевременные абстракции** (Sandi Metz)
-- Остальные 7+ догм — в каталоге как drafts (`[NEED POSTMORTEMS]`). Мы **не прячем**, что каталог в зачаточном состоянии. Честная метка «Draft» стоит в шапке
-- **Голосовой режим** — «Tell me the story» — с первого дня, не «потом»
-
-Реалистичный горизонт: 2–4 месяца. Не 3 недели, не год.
+In v0.1 the connection is implemented dumbly and honestly — via pattern-match on AST. No semantic magic. When pattern-match stops working, we'll honestly add something smarter.
 
 ---
 
-## Чего НЕ умеет (и говорим это прямо)
+## What's Actually in v0.1 (Honest Scope)
 
-- Не предсказывает, когда твоя команда выгорит. Мы не социологи и не гадалки.
-- Не симулирует «физику» догм через JEPA / world models. Пока это честно сделать нельзя — ground truth нельзя синтезировать.
-- Не анализирует весь репозиторий одним махом. State space explosion — реальная штука, на ней уже много кто себе голову сломал.
+- **Function Probe** for a single Python function — AST analysis, typical patterns (`deep-inheritance`, `n-layers-deep`, `test-heavy`), Trust Score on verifiable signals (code age, test coverage, complexity)
+- **3 fully filled dogmas** in the catalog with real post-mortem links:
+  1. **Microservices for everything** (Segment, Prime Video, and friends)
+  2. **TDD as law** (DHH, 2014)
+  3. **DRY / premature abstractions** (Sandi Metz)
+- The remaining 7+ dogmas are in the catalog as drafts (`[NEED POSTMORTEMS]`). We **don't hide** that the catalog is in its early stages. An honest "Draft" label is in the header
+- **Voice mode** — "Tell me the story" — from day one, not "later"
 
-Если в какой-то момент мы начнём продавать эти три — бейте палками. Это предательство идеи.
-
----
-
-## Доступность — не фича
-
-Мы не добавим её «потом». Строим так, чтобы зрячий и незрячий инженер с первого дня получали **одинаковый** уровень понимания кода.
-
-Если незрячий разработчик не может получить такую же правду о коде, как зрячий — значит мы построили говно.
+Realistic horizon: 2–4 months. Not 3 weeks, not a year.
 
 ---
 
-## Наш подход
+## What It Can't Do (And We Say So Upfront)
+
+- Does not predict when your team will burn out. We're not sociologists or fortune-tellers.
+- Does not simulate "physics" of dogmas via JEPA / world models. For now this can't be done honestly — ground truth can't be synthesized.
+- Does not analyze an entire repository in one shot. State space explosion is real; many people have already broken their heads on it.
+
+If at some point we start selling these three — beat us with sticks. That's a betrayal of the idea.
+
+---
+
+## Accessibility Is Not a Feature
+
+We won't add it "later". We're building so that a sighted and a blind engineer get the **same** level of code understanding from day one.
+
+If a blind developer can't get the same truth about code as a sighted one — we built garbage.
+
+---
+
+## Our Approach
 
 ```
-Функция  →  Файл  →  Модуль  →  Сервис
+Function  →  File  →  Module  →  Service
 ```
 
-Каждый следующий уровень появляется только после того, как предыдущий работает честно.
+Each next level appears only after the previous one works honestly.
 
-**Мы не верим комментариям.**
-**Мы не верим именам.**
-**Мы не верим даже себе.**
-**Мы проверяем.**
-
----
-
-## Как помочь
-
-Open source. Денег не надо. Нужно, чтобы работало честно.
-
-- **Незрячим и слабовидящим инженерам** — вы главные ревьюеры голосового режима. Без вас всё остальное — красивые стрелочки
-- **Людям со шрамами от догм** — присылайте пост-мортем. Какая догма душила, при каких параметрах. Это топливо каталога
-- **Ревьюерам реализма** — если в каталоге видишь цифру или утверждение без ссылки, open issue с меткой `honesty-bug`
-
-Issues и PR — прямо тут.
+**We don't trust comments.**
+**We don't trust names.**
+**We don't even trust ourselves.**
+**We verify.**
 
 ---
 
-## Лицензия
+## How to Help
 
-MIT. Форкай, ломай, улучшай.
+Open source. No money needed. It just needs to work honestly.
 
-Если твой форк не работает голосом или выдаёт непроверенные «экспертные» числа без ссылок — **не называй его ArchDogma**.
+- **Blind and low-vision engineers** — you're the primary reviewers of voice mode. Without you, everything else is just pretty arrows
+- **People scarred by dogmas** — send a post-mortem. Which dogma was strangling you, under what conditions. That's the fuel for the catalog
+- **Realism reviewers** — if you see a number or statement in the catalog without a link, open an issue with the `honesty-bug` label
+
+Issues and PRs — right here.
+
+---
+
+## License
+
+MIT. Fork it, break it, improve it.
+
+If your fork doesn't work by voice or outputs unverified "expert" numbers without links — **don't call it ArchDogma**.
 
 🦫
