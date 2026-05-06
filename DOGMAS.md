@@ -2,7 +2,7 @@
 
 # Каталог догм
 
-_Обновлено: 2026-04-18 — schema v1._
+_Обновлено: 2026-04-30 — schema v1._
 
 Правила каталога:
 
@@ -216,6 +216,61 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 _Кейсы и honest verdict пока не заполнены (статус `stub`)._
 
+## §11. KISS (Keep It Simple, Stupid)  \[draft\]
+
+**Определение.** Prefer simple solutions over complex ones. Complexity is the enemy. Remove everything that isn't strictly necessary.
+
+
+**Origin.** U.S. Navy, 1960. Kelly Johnson (Lockheed Skunk Works) insisted aircraft be repairable in combat with basic tools. Software adoption via Unix philosophy («Do one thing well») and later «Clean Code» culture.
+
+
+**Условия провала.**
+
+- KISS used as a reason to avoid thinking deeply about the problem.
+- Simplicity of implementation confused with simplicity of the model.
+- Removing real complexity that the domain actually has — just hiding it elsewhere.
+- Team conflates 'familiar' with 'simple'.
+- 'Stupid' in the slogan is taken literally — optimizing for the dumbest solution, not the clearest one.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Контр-догмы.**
+
+- **Simple but Smart = Genius** — _Yegor Gaidar, 2026 (ArchDogma issue ARC-222)_
+  > KISS without intelligence produces dumb simplicity. Real mastery is achieving simple interfaces over genuinely complex systems — not pretending complexity doesn't exist. Minecraft: one voxel, infinite depth. Einstein: «Everything should be made as simple as possible, but not simpler.»
+
+- **Simple Made Easy** — _Rich Hickey, Strange Loop 2011_ ([source](https://www.infoq.com/presentations/Simple-Made-Easy/))
+  > «Simple» (few interleaved concerns) ≠ «easy» (familiar/convenient). Easy solutions can be complected. The goal is simplicity of the model, not ease of the implementation.
+
+- **Worse Is Better** — _Richard Gabriel, 1989_ ([source](https://www.dreamsongs.com/WIB.html))
+  > The «New Jersey style» — simple implementation, imperfect interface — often wins in practice over the «MIT style» correct-interface design. A warning that KISS can be weaponized to ship deliberately incomplete things.
+
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Следуй догме, когда:_
+
+- Two designs solve the same problem — pick the one with fewer moving parts.
+- Complexity is coming from your design choices, not from the domain.
+- You can remove something and the system still correctly handles all real cases.
+
+_Ломай догму, когда:_
+
+- The problem is genuinely complex — KISS doesn't simplify the problem, just hides it.
+- You're simplifying the wrong layer (impl) while complicating the right one (API/model).
+- The 'simple' solution requires callers to carry the complexity you refused to encode.
+- You're optimizing for lines of code, not for conceptual clarity.
+
+**Main signal:** Every new edge case requires a workaround in the calling code. Your 'simple' core is pushing complexity outward — that's not KISS, that's a tax on every consumer.
+
+
+
 ## Кандидаты
 
 Антипаттерны и догмы-в-наблюдении. Не имеют §-номера; могут быть promoted в `dogmas` после накопления кейсов.
@@ -244,9 +299,6 @@ Classic code smell — when a signature demands too much, it can usually be spli
 **Related tags:** `too-many-params`.
 
 ### YAGNI (You Aren't Gonna Need It)  \[yagni\]
-
-
-### KISS (Keep It Simple, Stupid)  \[kiss\]
 
 
 ### Agile and its rituals  \[agile-rituals\]

@@ -2,11 +2,14 @@
 
 v0.1 target set (see AST_TAGS_DRAFT.md):
     - deep-nesting           ← implemented
-    - long-function          ← pending
-    - god-function           ← pending
-    - god-class              ← pending
-    - deep-inheritance       ← pending (single-file slice)
-    - if-on-parameter        ← pending
+    - long-function          ← implemented
+    - god-function           ← implemented
+    - too-many-params        ← implemented
+    - if-on-parameter        ← implemented
+    - magic-numbers          ← implemented
+    - dynamic-magic          ← implemented
+    - god-class              ← pending (class-level, requires walker extension)
+    - deep-inheritance       ← pending (class-level, single-file slice)
 
 All thresholds are defaults per AST_TAGS_DRAFT.md and are configurable.
 No threshold is treated as research-proven unless explicitly cited in the draft.
@@ -27,6 +30,8 @@ DEFAULT_GOD_CLASS_METHODS = 25
 DEFAULT_DEEP_INHERITANCE_DEPTH = 4
 DEFAULT_IF_ON_PARAMETER_BRANCHES = 3
 DEFAULT_TOO_MANY_PARAMS = 5
+DEFAULT_MAGIC_NUMBERS_THRESHOLD = 5
+# dynamic-magic: binary tag (any occurrence), no threshold constant needed
 
 
 @dataclass(frozen=True)
@@ -407,6 +412,273 @@ def detect_too_many_params(
 
 
 # ---------------------------------------------------------------------------
+# if-on-parameter
+# ---------------------------------------------------------------------------
+#
+# Detects the classic "flag argument controls behavior" smell: a function that
+# dispatches on one parameter's value via a chain of if/elif comparisons to
+# literals. Named after Sandi Metz's "The Wrong Abstraction" (2016), where
+# this pattern appears as the most concrete, narrow, checkable form.
+#
+# Detection algorithm:
+#   1. Walk all If nodes in the function body (same-scope, no inner defs).
+#   2. For each If, collect a "pivot" — a single Name node appearing as the
+#      left side of a Compare to a literal constant (int / str / bytes / bool /
+#      None). The elif chain is the interesting case: one If.orelse → [If].
+#   3. Group by pivot name. If any single parameter name appears as the pivot
+#      in `threshold` or more distinct branches, tag it.
+#
+# "Distinct branch" = one If node whose test directly compares the pivot.
+# Nested ifs checking the same name inside a branch are NOT counted as
+# separate branches — that would be a different shape of smell.
+#
+# Known limitation: only catches `param == literal` and `literal == param`
+# directly in the test. Indirect forms (isinstance checks, lookup tables,
+# dict dispatchers) are out of scope for v0.1.
+
+
+def _is_compare_to_literal(
+    test: ast.expr,
+) -> str | None:
+    """Return the pivot name if `test` is `name == literal` or `literal == name`.
+
+    Returns None otherwise.
+    """
+    if not isinstance(test, ast.Compare):
+        return None
+    if len(test.ops) != 1 or not isinstance(test.ops[0], ast.Eq):
+        return None
+    if len(test.comparators) != 1:
+        return None
+
+    left, right = test.left, test.comparators[0]
+    literal_types = (ast.Constant,)
+
+    if isinstance(left, ast.Name) and isinstance(right, literal_types):
+        return left.id
+    if isinstance(right, ast.Name) and isinstance(left, literal_types):
+        return right.id
+    return None
+
+
+def _collect_if_pivots(
+    stmts: list[ast.stmt],
+    pivots: dict[str, int],
+) -> None:
+    """Walk `stmts` (same scope) and count direct-compare branches per pivot.
+
+    For If nodes we only follow the orelse chain (elif), NOT the body.
+    This keeps the detector focused on dispatch at one syntactic level —
+    nested ifs inside a branch body are a separate shape of smell.
+
+    For all other statements we recurse into their sub-bodies, so an
+    if-chain inside a for-loop or try-block is still caught.
+    """
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue  # scope boundary
+        if isinstance(s, ast.If):
+            pivot = _is_compare_to_literal(s.test)
+            if pivot is not None:
+                pivots[pivot] = pivots.get(pivot, 0) + 1
+            # Follow elif chains (If node directly inside orelse) but NOT s.body.
+            _collect_if_pivots(s.orelse, pivots)
+        else:
+            for attr in ("body", "orelse", "finalbody"):
+                sub = getattr(s, attr, None)
+                if sub:
+                    _collect_if_pivots(sub, pivots)
+            if isinstance(s, ast.Try):
+                for handler in s.handlers:
+                    _collect_if_pivots(handler.body, pivots)
+            if isinstance(s, ast.Match):
+                for case in s.cases:
+                    _collect_if_pivots(case.body, pivots)
+
+
+def detect_if_on_parameter(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    threshold: int = DEFAULT_IF_ON_PARAMETER_BRANCHES,
+) -> Tag | None:
+    """Return a Tag if any parameter is used as a dispatch pivot `threshold` or more times.
+
+    Only catches `param == literal` / `literal == param` comparisons at the
+    immediate If-test level. Other dispatch forms (isinstance, dict) are out of
+    scope for v0.1 (see AST_TAGS_DRAFT.md).
+    """
+    pivots: dict[str, int] = {}
+    _collect_if_pivots(func.body, pivots)
+
+    for name, count in pivots.items():
+        if count >= threshold:
+            return Tag(
+                name="if-on-parameter",
+                detail=(
+                    f"Parameter `{name}` is compared to literals in "
+                    f"{count} distinct if/elif branches (threshold: {threshold}). "
+                    f"Source note: Sandi Metz, 'The Wrong Abstraction' (2016) — "
+                    f"flag argument that controls behavior is the canonical example. "
+                    f"v0.1 narrow form: only `param == literal` comparisons."
+                ),
+                line=func.lineno,
+                col=func.col_offset,
+            )
+    return None
+
+
+# ---------------------------------------------------------------------------
+# magic-numbers
+# ---------------------------------------------------------------------------
+#
+# Counts numeric literals in a function body that are NOT assigned to a named
+# constant. Excludes 0, 1, -1 — universally accepted as non-magic (identity,
+# boundary, sentinel).
+#
+# What counts as a numeric literal here:
+#   - int, float, complex ast.Constant nodes with non-excluded values
+#   - Does NOT count boolean True/False (they're ast.Constant but kind "bool")
+#   - Does NOT count numeric literals used as default argument values in
+#     nested defs (different scope, not reached)
+#
+# Known limitation: -0 and -1.0 are represented as UnaryOp(USub, Constant(0))
+# in the AST, not as Constant(-0). The detector treats the inner Constant,
+# so `-5` is correctly caught, `-1` is excluded, `-0` is excluded (maps to 0
+# after negation). Complex arithmetic is not fully tracked.
+#
+# No research-backed threshold. Default 5 is conservative — a function with
+# five or more unnamed numeric literals is almost always hiding intent.
+
+
+_EXCLUDED_NUMBERS: frozenset[int | float] = frozenset({0, 1, -1})
+
+
+def _is_numeric_magic(node: ast.Constant) -> bool:
+    """Return True if `node` is a non-excluded numeric literal."""
+    v = node.value
+    if isinstance(v, bool):
+        return False
+    if not isinstance(v, (int, float, complex)):
+        return False
+    if isinstance(v, (int, float)) and v in _EXCLUDED_NUMBERS:
+        return False
+    return True
+
+
+def _collect_magic_numbers(stmts: list[ast.stmt], out: list[ast.Constant]) -> None:
+    """Walk `stmts` (same scope) and collect numeric magic literal nodes."""
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue  # scope boundary
+        for node in ast.walk(s):
+            if isinstance(node, ast.Constant) and _is_numeric_magic(node):
+                out.append(node)
+
+
+def detect_magic_numbers(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    threshold: int = DEFAULT_MAGIC_NUMBERS_THRESHOLD,
+) -> Tag | None:
+    """Return a Tag if the function body contains `threshold` or more magic numbers.
+
+    Excludes 0, 1, -1. Boolean True/False are not counted. Nested defs are
+    not descended into.
+    """
+    found: list[ast.Constant] = []
+    _collect_magic_numbers(func.body, found)
+
+    if len(found) < threshold:
+        return None
+
+    first = found[0]
+    return Tag(
+        name="magic-numbers",
+        detail=(
+            f"Function body contains {len(found)} unexplained numeric literals "
+            f"(0, 1, -1 excluded). "
+            f"Default threshold: {threshold}. "
+            f"Source note: no research-backed threshold — heuristic consensus "
+            f"across style guides. Named constants communicate intent; literals hide it."
+        ),
+        line=first.lineno,
+        col=first.col_offset,
+    )
+
+
+# ---------------------------------------------------------------------------
+# dynamic-magic
+# ---------------------------------------------------------------------------
+#
+# Binary tag — any use of Python's runtime reflection / dynamic execution builtins
+# in a function body triggers it.
+#
+# Covered builtins (from AST_TAGS_DRAFT.md):
+#   getattr, setattr, delattr, eval, exec, __import__
+#
+# Detection: we look for Call nodes whose func is a bare Name (e.g. `eval(...)`)
+# matching the target set. Attribute-qualified calls (e.g. `builtins.eval`) are
+# NOT caught in v0.1 — catching them requires resolving names across scopes, which
+# is Tier 2. This is honestly documented as a known limitation.
+#
+# "Any occurrence" means threshold = 1, but we collect all occurrences so the
+# detail message can report the count and first location.
+#
+# Rationale: Python docs + community consensus warn about these. No formal
+# research threshold — presence alone is signal enough for a flag.
+
+
+_DYNAMIC_MAGIC_NAMES: frozenset[str] = frozenset(
+    {"getattr", "setattr", "delattr", "eval", "exec", "__import__"}
+)
+
+
+def _collect_dynamic_calls(
+    stmts: list[ast.stmt], out: list[tuple[str, int, int]]
+) -> None:
+    """Walk `stmts` (same scope) and record (name, line, col) of dynamic calls."""
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue  # scope boundary
+        for node in ast.walk(s):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in _DYNAMIC_MAGIC_NAMES
+            ):
+                out.append((node.func.id, node.lineno, node.col_offset))
+
+
+def detect_dynamic_magic(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> Tag | None:
+    """Return a Tag if the function calls any of the dynamic-magic builtins.
+
+    Covered: getattr, setattr, delattr, eval, exec, __import__.
+    Attribute-qualified calls (builtins.eval) are NOT caught in v0.1 — that
+    requires cross-scope resolution (Tier 2).
+    """
+    found: list[tuple[str, int, int]] = []
+    _collect_dynamic_calls(func.body, found)
+
+    if not found:
+        return None
+
+    names_used = sorted({name for name, _, _ in found})
+    first_name, first_line, first_col = found[0]
+    return Tag(
+        name="dynamic-magic",
+        detail=(
+            f"Function uses {len(found)} dynamic-reflection call(s): "
+            f"{', '.join(names_used)}. "
+            f"Source note: Python docs recommend caution with these builtins; "
+            f"consensus warning, not formal research. "
+            f"v0.1 gap: attribute-qualified calls (builtins.eval) not caught."
+        ),
+        line=first_line,
+        col=first_col,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry of Tier 1 detectors
 # ---------------------------------------------------------------------------
 #
@@ -421,4 +693,7 @@ TIER1_DETECTORS: tuple[
     ("long-function", detect_long_function),
     ("god-function", detect_god_function),
     ("too-many-params", detect_too_many_params),
+    ("if-on-parameter", detect_if_on_parameter),
+    ("magic-numbers", detect_magic_numbers),
+    ("dynamic-magic", detect_dynamic_magic),
 )

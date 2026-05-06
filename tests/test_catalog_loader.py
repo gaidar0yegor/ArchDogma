@@ -46,7 +46,7 @@ def test_default_catalog_path_finds_real_file(real_catalog_path: Path) -> None:
 def test_load_real_catalog_shape(real_catalog_path: Path) -> None:
     cat = load_catalog(real_catalog_path)
     assert cat.schema_version == 1
-    assert len(cat.dogmas) == 10, "v0.1 seeds ten numbered dogmas"
+    assert len(cat.dogmas) == 11, "v0.1 seeds eleven numbered dogmas"
     assert len(cat.candidates) >= 1
 
 
