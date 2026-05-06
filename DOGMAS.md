@@ -11,21 +11,103 @@ Catalog rules:
 - A dogma marked 🎯 v0.1-priority must have status no lower than `draft`.
 - Absence of a tag ≠ absence of a problem.
 
-## §1. 100% Test Coverage  \[stub\]
+## §1. 100% Test Coverage  \[draft\]
 
 **Definition.** Everything must be covered by unit tests. Uncovered code is a risk.
 
 **Origin.** TDD movement, Kent Beck, Uncle Bob, XP.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
 
-## §2. Clean Architecture / N Layers of Abstraction  \[stub\]
+- Coverage metric gamification: tests that hit every line without asserting meaningful behavior.
+- UI code, animations, external API calls — impossible or expensive to cover at the unit level.
+- 100% line coverage does not detect logic errors — you can cover every branch of wrong code.
+- Legacy codebases: retrofitting coverage produces brittle characterization tests.
+- Test suite becomes slower than the feedback loop developers actually use.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Testing Pyramid** — _Mike Cohn, Succeeding with Agile (2009)_
+  > Optimise for 70% unit / 20% integration / 10% E2E — not 100% unit coverage. Different kinds of tests catch different bugs.
+- **Test for behaviour, not lines** — _Dan North, BDD (2006)_
+  > Coverage as a proxy for quality is the wrong abstraction. A test that asserts nothing can achieve 100% coverage.
+- **Characterization Testing** — _Michael Feathers, Working Effectively with Legacy Code (2004)_
+  > For legacy without tests: the goal is to lock in current behavior so you can refactor safely — not to document correct behaviour.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- Green-field business logic where tests drive design (TDD workflow).
+- Critical domains: billing, security, medicine — cost of a missed bug is very high.
+- Coverage enforcement is a backstop for a team known to skip tests under deadline.
+
+_Break the dogma when:_
+
+- Coverage is used as a quality proxy — a team gaming 100% is worse than a team at 70% with good assertions.
+- UI, visualization, or integration-heavy code — integration and E2E tests cover this better.
+- Legacy codebase where coverage retrofit costs exceed the value of the tests produced.
+- Test suite runtime is already a bottleneck — adding coverage-chasing tests makes it worse.
+
+**Main signal:** Every newly added line of business logic triggers a coverage drill that produces tests with no assertions. That is not safety — that is a number.
+
+
+## §2. Clean Architecture / N Layers of Abstraction  \[draft\]
 
 **Definition.** Split code into layers (domain, application, infrastructure, presentation). Dependencies point inward.
 
-**Origin.** Uncle Bob, «Clean Architecture». Previously Hexagonal/Onion Architecture.
+**Origin.** Uncle Bob, Clean Architecture. Previously Hexagonal/Onion Architecture.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
+
+- Significant upfront boilerplate: interfaces, adapters, DTOs, mappers — before any business value.
+- Mapping overhead between layers multiplies the surface area for bugs.
+- Premature for small teams building simple CRUD apps — architecture tax before architecture benefit.
+- Confuses structure with discipline: teams add layers but couple them anyway.
+- Testing becomes harder when every boundary needs a mock or fake.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **MonolithFirst** — _Martin Fowler, 2015_ ([source](https://martinfowler.com/bliki/MonolithFirst.html))
+  > Start simple; extract layers and services only when the boundary is proven. Early structure for a domain you do not yet understand produces the wrong abstraction.
+- **Simple Design** — _Kent Beck, Extreme Programming Explained (1999)_
+  > Four rules: passes all tests; communicates intent; no duplication; fewest elements. Architecture emerges from this — it is not imposed.
+- **Architecture Decision Records** — _Michael Nygard, 2011_ ([source](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions))
+  > Explicit, reversible decisions documented in ADRs beat a mandatory N-layer template.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- Multiple teams owning independent layers with different release cycles.
+- Complex business domain that changes independently of infrastructure.
+- You have already felt the pain of coupling domain logic to your ORM or HTTP framework.
+
+_Break the dogma when:_
+
+- Team smaller than 5 and single product — overhead of maintaining boundaries is not justified.
+- Early startup / MVP phase — domain has not stabilised, layers will be the wrong shape.
+- Mapping between layers is becoming a maintenance burden with no benefit.
+- Your problem is ops complexity, not domain complexity.
+
+**Main signal:** You spend more time writing mappers between layers than writing business logic. The architecture is consuming the product.
+
 
 ## §3. DRY (Don't Repeat Yourself) 🎯  \[filled\]
 
@@ -125,13 +207,53 @@ _Break the dogma when:_
 **Main signal:** Distributed monolith — a bunch of small services that still change together and deploy together, but now over the network.
 
 
-## §5. OOP as the Only Truth (inheritance everywhere)  \[stub\]
+## §5. OOP as the Only Truth (inheritance everywhere)  \[draft\]
 
 **Definition.** Everything is an object. Inheritance is the primary tool for reuse.
 
 **Origin.** Smalltalk, Java, GoF Design Patterns.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
+
+- Fragile Base Class problem: a change to the parent silently breaks all children.
+- Inheritance for code reuse creates tight coupling — two different things share a parent because they share a method.
+- Deep inheritance hierarchies become unreadable: you must trace 5 levels to understand any one method.
+- Data-heavy pipelines (pandas, numpy, ETL) are cleaner with functions than with object hierarchies.
+- Go, Rust, Haskell — languages with no inheritance at all produce production-quality systems.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Composition over Inheritance** — _GoF (Gang of Four), Design Patterns (1994)_
+  > The GoF book itself recommends preferring composition — the patterns that made OOP famous mostly avoid deep inheritance.
+- **Favour composition over inheritance** — _Joshua Bloch, Effective Java (2001), Item 16_
+  > Inheritance is appropriate only in is-a relationships. Reuse via composition is safer and more flexible.
+- **Functional Programming renaissance** — _Haskell, Clojure, Elm, Rust communities — 2010s_
+  > Type classes, traits, and algebraic data types achieve polymorphism without inheritance. The paradigm works at production scale.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- True is-a hierarchies: GUI widgets, plugin frameworks, protocol implementations.
+- Team is homogeneous in OOP experience and the domain maps naturally to objects.
+- Framework demands it (Django models, Flask extensions).
+
+_Break the dogma when:_
+
+- Inheritance is used for code reuse, not is-a modelling.
+- Subclasses override most parent methods — the hierarchy is not earning its keep.
+- Mixins are piling up to compose behaviors — that is composition with extra confusion.
+- Data-heavy code: functions over dataclasses are clearer than method-heavy classes.
+
+**Main signal:** You cannot add a new subclass without reading and understanding the full parent chain. That is coupling, not extensibility.
 
 **Related tags:** `deep-inheritance`.
 
@@ -184,37 +306,202 @@ _Break the dogma when:_
 **Main signal:** You write a test before you understood what the code should do. Result — well-tested wrong design + a forest of mocks.
 
 
-## §7. SOLID as Law  \[stub\]
+## §7. SOLID as Law  \[draft\]
 
 **Definition.** SRP, OCP, LSP, ISP, DIP — five principles all code must follow.
 
 **Origin.** Uncle Bob, 2000s.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
 
-## §8. Self-documenting code (no comments needed)  \[stub\]
+- SRP interpreted too narrowly: micro-classes with one method each; a single feature touches 20 files.
+- OCP applied pre-emptively: extension points for behaviours that never change add dead abstraction.
+- DIP everywhere: an interface for every class even when only one implementation exists.
+- ISP applied too early: explosion of tiny interfaces that mirror exactly one caller.
+- SOLID used as a checklist to pass code review rather than as a tool for solving real coupling problems.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Simple Design (Beck 4 Rules)** — _Kent Beck, Extreme Programming Explained (1999)_
+  > Passes tests; communicates intent; no duplication; fewest elements. SOLID emerges from this naturally — it is not a starting constraint.
+- **CUPID — properties over principles** — _Dan North, 2022_ ([source](https://dannorth.net/cupid-for-joyful-coding/))
+  > SOLID is too prescriptive. CUPID (Composable, Unix-philosophy, Predictable, Idiomatic, Domain-based) describes properties of good code, not rules to enforce.
+- **Shotgun Surgery anti-pattern** — _Martin Fowler, Refactoring (1999)_
+  > Over-applying SRP produces shotgun surgery: a single change scatters edits across many files. The smell has a name — it is a known failure mode of excessive decomposition.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- Large codebase with multiple teams — stable boundaries prevent cross-team coupling.
+- Extension points that genuinely exist: multiple payment providers, multiple storage backends.
+- Team explicitly needs shared vocabulary for code review.
+
+_Break the dogma when:_
+
+- Single-person or two-person project — overhead of interfaces and injection is not justified.
+- CRUD application where the domain rarely changes.
+- Early prototype: applying OCP/DIP before the abstractions are proven produces the wrong design.
+- Checklist-driven reviews: SOLID as a gate for merges degrades into cargo-culting.
+
+**Main signal:** Adding a new feature requires creating an interface, an implementation, a factory, and a registration entry — but there is only one implementation and there never will be a second.
+
+
+## §8. Self-documenting code (no comments needed)  \[draft\]
 
 **Definition.** Good code reads without comments. Comments are a sign of unclear code.
 
-**Origin.** Uncle Bob, «Clean Code».
+**Origin.** Uncle Bob, Clean Code.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
 
-## §9. Premature optimization is the root of all evil  \[stub\]
+- Domain knowledge that code cannot convey: why this algorithm was chosen over alternatives.
+- Non-obvious invariants: this function assumes X has already been called.
+- Performance tricks that look wrong but are intentionally correct.
+- Regulatory requirements or legal constraints that require prose explanation.
+- The rule becomes remove all comments even when the WHY is genuinely non-obvious.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Comment the WHY, not the WHAT** — _The Pragmatic Programmer, Hunt and Thomas (1999)_
+  > Comments explaining intent, constraints, and tradeoffs are valuable. Comments restating the code are noise. The distinction is the point — not no comments.
+- **Literate Programming** — _Donald Knuth, 1984_
+  > Code and prose belong together. Complex algorithms need mathematical explanations that code syntax cannot provide.
+- **Architecture Decision Records** — _Michael Nygard, 2011_ ([source](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions))
+  > The most critical documentation is not inside functions — it is the decision log explaining why the system is shaped the way it is.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- Naming is rich enough to express intent: domain concepts map clearly to identifiers.
+- Team shares deep domain knowledge — no onboarding gap that prose would close.
+- Code is straightforward CRUD or data transformation with no non-obvious correctness requirements.
+
+_Break the dogma when:_
+
+- The WHY is genuinely non-obvious: performance constraints, workarounds, legal obligations.
+- Algorithm has non-obvious correctness requirements (cryptography, numerical stability, concurrency).
+- Team turns over and onboarding time matters — good comments reduce the knowledge cliff.
+- An invariant cannot be expressed as a type or a name: add a comment.
+
+**Main signal:** A new team member reads the function and understands WHAT it does, but not WHY it exists, WHY this approach, or WHY the seemingly wrong constant is correct.
+
+
+## §9. Premature optimization is the root of all evil  \[draft\]
 
 **Definition.** Don't optimize until you've profiled. (Usually cited without context.)
 
-**Origin.** Donald Knuth, 1974. Full quote: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»
+**Origin.** Donald Knuth, 1974. Full quote: We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
 
-## §10. Functional purity / Immutability everywhere  \[stub\]
+- The quote is weaponised to avoid thinking about performance entirely — we will optimise later becomes never.
+- Ignores Knuth's own 3%: structural decisions (O(n^2) vs O(n log n)) are design, not premature optimisation.
+- Retry counts, connection pool sizes, timeout values — foundational, not premature.
+- Latency as a product constraint from day 1 (trading systems, real-time games) — not a post-hoc concern.
+- The culture becomes always defer and the team never develops performance intuition.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Profile-Driven Development** — _Brendan Gregg, Systems Performance (2013/2020)_
+  > The correct reading of Knuth is: measure first, then optimise the bottleneck. The tool is profiling, not the quote.
+- **Algorithmic thinking is design, not optimisation** — _folk (CS pedagogy)_
+  > Choosing O(n log n) over O(n^2) is not premature optimisation — it is selecting the right algorithm. Conflating the two is a misreading of Knuth.
+- **Performance budgets** — _Google Web Vitals / Lighthouse team_
+  > For user-facing latency, performance is a feature constraint defined upfront, not an optimisation discovered post-launch.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- You have correct, readable code and no profiling data — do not optimise yet.
+- Code clarity is genuinely at stake: the optimisation makes the code harder to reason about.
+- The hotpath has not been identified — any guess about where time is spent is probably wrong.
+
+_Break the dogma when:_
+
+- You are choosing between algorithms: O(n^2) vs O(n log n) is a design decision, not an optimisation.
+- Latency budget is a product constraint defined before writing any code.
+- You have profiling data showing a specific bottleneck — now optimise that bottleneck deliberately.
+- Infrastructure constants (timeouts, pool sizes, batch sizes) must be sized correctly from the start.
+
+**Main signal:** The codebase has no performance tests, no profiling history, and the team calls every performance concern premature. The quote has become a reason not to think.
+
+
+## §10. Functional purity / Immutability everywhere  \[draft\]
 
 **Definition.** Avoid mutations. Pure functions. No side effects.
 
 **Origin.** Haskell community, FP renaissance of the 2010s, React/Redux.
 
-_Cases and honest verdict not yet filled in (status `stub`)._
+**Failure conditions.**
+
+- Immutability + large data structures leads to garbage collection pressure (copy-on-write overhead).
+- Pure FP in inherently stateful systems (web servers, UIs, databases) adds monad-wrapping indirection.
+- Monad chains for IO in non-Haskell languages (Python, JS) become harder to read than equivalent imperative code.
+- Go, Python, JavaScript: pure FP style is non-idiomatic and creates friction for developers joining the team.
+- Redux-everywhere in UIs: global immutable state for local component state that changes many times per second.
+
+**Failure cases.**
+
+- _need_postmortems_
+
+**Success cases.**
+
+- _need_data_
+
+**Counter-dogmas.**
+
+- **Practical Functional Programming** — _Scott Wlaschin, F# for Fun and Profit (2012-present)_ ([source](https://fsharpforfunandprofit.com/))
+  > Apply functional style where it pays off (data transformations, business rules); use mutation where it is the natural model (state machines, I/O).
+- **Object-Functional hybrids** — _Scala, Kotlin communities_
+  > Immutable value objects for domain logic + mutable infrastructure code. Neither pure OOP nor pure FP — pragmatic composition.
+- **Local mutation is fine** — _Effective Python, Brett Slatkin; Rust ownership model_
+  > Mutation scoped to a function body (local variable reassignment, list building then return) has no observable side effect. Immutability matters at the boundary, not inside a local scope.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- Pure business logic computation: data transformations, validations, calculations — benefit from testability and referential transparency.
+- Shared mutable state is causing bugs — immutability is the surgical fix.
+- Concurrent code where shared mutation causes races.
+
+_Break the dogma when:_
+
+- Inherently stateful domain: session management, stream processing, event loops.
+- Immutability overhead (copy-on-write) is measurable in profiling data.
+- Team is unfamiliar with FP idioms — forcing purity creates unreadable code that nobody maintains.
+- Framework requires mutation (ORM, UI component state).
+
+**Main signal:** Every function that has a side effect wraps it in a monad or callback chain. The type system is correct; the code is unreadable.
+
+**Related tags:** `mutable-default-arg`.
 
 ## §11. KISS (Keep It Simple, Stupid)  \[draft\]
 
@@ -333,6 +620,41 @@ Classic code smell — when a signature demands too much, it can usually be spli
 
 ### Pair programming always  \[pair-programming-always\]
 
+
+### Broad exception handling (bare except / except Exception)  \[broad-exception-handler\]
+
+Swallowing unexpected exceptions hides bugs. Specific handlers communicate intent and preserve error information.
+
+**Sources.**
+
+- [PEP 8 — Avoid bare except clauses](https://peps.python.org/pep-0008/#programming-recommendations)
+- pylint W0703 — Catching too general exception
+- [flake8-bugbear B001 — bare except](https://github.com/PyCQA/flake8-bugbear)
+
+**Related tags:** `broad-except`.
+
+### Mutable Default Argument  \[mutable-default-argument\]
+
+Classic Python gotcha: mutable default values (list, dict, set) are shared across all calls. Use None as sentinel.
+
+**Sources.**
+
+- [Python docs — Default Argument Values](https://docs.python.org/3/faq/programming.html#why-are-default-values-shared-between-objects)
+- pylint W0102 — Dangerous default value
+- [flake8-bugbear B006 — Do not use mutable data structures for argument defaults](https://github.com/PyCQA/flake8-bugbear)
+
+**Related tags:** `mutable-default-arg`.
+
+### Too Many Return Points  \[too-many-exits\]
+
+Many return statements can signal a function handling too many cases. Related to the single-exit principle — a guideline, not a law.
+
+**Sources.**
+
+- Robert C. Martin, Clean Code (2008) — single exit point
+- pylint R0911 — Too many return statements (default: 6)
+
+**Related tags:** `too-many-returns`.
 
 ---
 

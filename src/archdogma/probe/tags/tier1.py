@@ -8,6 +8,9 @@ v0.1 target set (see AST_TAGS_DRAFT.md):
     - if-on-parameter        ← implemented
     - magic-numbers          ← implemented
     - dynamic-magic          ← implemented
+    - broad-except           ← implemented
+    - mutable-default-arg    ← implemented
+    - too-many-returns       ← implemented
     - god-class              ← pending (class-level, requires walker extension)
     - deep-inheritance       ← pending (class-level, single-file slice)
 
@@ -31,7 +34,8 @@ DEFAULT_DEEP_INHERITANCE_DEPTH = 4
 DEFAULT_IF_ON_PARAMETER_BRANCHES = 3
 DEFAULT_TOO_MANY_PARAMS = 5
 DEFAULT_MAGIC_NUMBERS_THRESHOLD = 5
-# dynamic-magic: binary tag (any occurrence), no threshold constant needed
+DEFAULT_TOO_MANY_RETURNS = 4
+# dynamic-magic, broad-except, mutable-default-arg: binary tags, no threshold
 
 
 @dataclass(frozen=True)
@@ -679,6 +683,203 @@ def detect_dynamic_magic(
 
 
 # ---------------------------------------------------------------------------
+# broad-except
+# ---------------------------------------------------------------------------
+#
+# Detects bare `except:` or `except Exception:` / `except BaseException:`
+# handlers anywhere inside the function body. Binary tag — any occurrence
+# triggers it (we report the count and the names actually used).
+#
+# Nested handlers inside nested try blocks ARE caught (still the same scope).
+# Inner def / class bodies are NOT descended — they are separate scopes and
+# are probed independently.
+#
+# Only catches bare Name exception types (e.g. `except Exception:`). Attribute-
+# qualified types like `except module.Exception:` require resolving names
+# across imports — that is Tier 2 territory and is out of scope for v0.1.
+
+
+_BROAD_EXCEPT_TYPES: frozenset[str] = frozenset({"Exception", "BaseException"})
+
+
+def _collect_broad_handlers(
+    stmts: list[ast.stmt], out: list[tuple[str, int, int]]
+) -> None:
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue
+        if isinstance(s, ast.Try):
+            for handler in s.handlers:
+                if handler.type is None:
+                    out.append(("bare except", handler.lineno, handler.col_offset))
+                elif (
+                    isinstance(handler.type, ast.Name)
+                    and handler.type.id in _BROAD_EXCEPT_TYPES
+                ):
+                    out.append((handler.type.id, handler.lineno, handler.col_offset))
+                _collect_broad_handlers(handler.body, out)
+            _collect_broad_handlers(s.body, out)
+            _collect_broad_handlers(s.orelse, out)
+            _collect_broad_handlers(s.finalbody, out)
+        else:
+            for attr in ("body", "orelse", "finalbody"):
+                sub = getattr(s, attr, None)
+                if sub:
+                    _collect_broad_handlers(sub, out)
+            if isinstance(s, ast.Match):
+                for case in s.cases:
+                    _collect_broad_handlers(case.body, out)
+
+
+def detect_broad_except(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> Tag | None:
+    found: list[tuple[str, int, int]] = []
+    _collect_broad_handlers(func.body, found)
+    if not found:
+        return None
+    kind, first_line, first_col = found[0]
+    names_used = sorted({k for k, _, _ in found})
+    return Tag(
+        name="broad-except",
+        detail=(
+            f"Function has {len(found)} broad exception handler(s): "
+            f"{', '.join(names_used)}. "
+            f"Source note: bare except and except Exception/BaseException swallow "
+            f"unexpected errors silently — specific exception types almost always "
+            f"produce more debuggable code. "
+            f"Ref: PEP 8, pylint W0703. "
+            f"v0.1 gap: attribute-qualified types (module.Exception) not caught."
+        ),
+        line=first_line,
+        col=first_col,
+    )
+
+
+# ---------------------------------------------------------------------------
+# mutable-default-arg
+# ---------------------------------------------------------------------------
+#
+# Python evaluates default values once at function definition time. When the
+# default is a mutable container (list, dict, set), the SAME object is reused
+# across every call — a classic gotcha that produces "ghost state" bugs.
+#
+# Detected: list / dict / set literal defaults on positional, positional-only,
+# and keyword-only parameters. Tools that flag this: pylint W0102,
+# flake8-bugbear B006.
+#
+# Only catches literal constructors. `def f(x=MyClass())` (a Call) is OUT of
+# scope for v0.1 — semantically also a shared instance, but indistinguishable
+# at the AST level from the (rare, intentional) "frozen factory" pattern. Tier
+# 2 may revisit with a stricter rule.
+
+
+def detect_mutable_default_arg(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> Tag | None:
+    found: list[tuple[str, str, int, int]] = []  # (arg_name, kind, line, col)
+
+    positional_args = list(func.args.posonlyargs) + list(func.args.args)
+    n_defaults = len(func.args.defaults)
+    args_with_defaults = positional_args[len(positional_args) - n_defaults:]
+
+    for arg, default in zip(args_with_defaults, func.args.defaults):
+        if isinstance(default, ast.List):
+            found.append((arg.arg, "list", default.lineno, default.col_offset))
+        elif isinstance(default, ast.Dict):
+            found.append((arg.arg, "dict", default.lineno, default.col_offset))
+        elif isinstance(default, ast.Set):
+            found.append((arg.arg, "set", default.lineno, default.col_offset))
+
+    for arg, default in zip(func.args.kwonlyargs, func.args.kw_defaults):
+        if default is None:
+            continue
+        if isinstance(default, ast.List):
+            found.append((arg.arg, "list", default.lineno, default.col_offset))
+        elif isinstance(default, ast.Dict):
+            found.append((arg.arg, "dict", default.lineno, default.col_offset))
+        elif isinstance(default, ast.Set):
+            found.append((arg.arg, "set", default.lineno, default.col_offset))
+
+    if not found:
+        return None
+
+    first_arg, first_kind, first_line, first_col = found[0]
+    return Tag(
+        name="mutable-default-arg",
+        detail=(
+            f"Parameter '{first_arg}' uses a mutable {first_kind} literal as default. "
+            f"Python evaluates default values once at function definition — the same "
+            f"object is reused across all calls. "
+            f"Source note: classic Python gotcha. Use None as sentinel and create "
+            f"the mutable inside the function body. "
+            f"Ref: PEP 8, pylint W0102, flake8-bugbear B006. "
+            f"v0.1 gap: MyClass() call defaults not caught — literals only."
+        ),
+        line=first_line,
+        col=first_col,
+    )
+
+
+# ---------------------------------------------------------------------------
+# too-many-returns
+# ---------------------------------------------------------------------------
+#
+# Counts `return` statements anywhere in the function body, recursing into
+# branches (if/elif/else, for/while/try/match), but stopping at scope
+# boundaries (nested def / async def / class — their returns belong to a
+# different function and are probed separately).
+#
+# Multiple exit points can signal a function doing too many things or one
+# that lacks a single-exit strategy. Martin's "Clean Code" prefers single
+# exit; pylint R0911 defaults to 6. We default to 4 — more conservative,
+# honestly not research-backed (no v0.1 detector is, see AST_TAGS_DRAFT.md).
+
+
+def _count_return_stmts(stmts: list[ast.stmt], state: dict[str, int]) -> None:
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue  # scope boundary
+        if isinstance(s, ast.Return):
+            state["count"] += 1
+            if state["first_line"] == 0:
+                state["first_line"] = s.lineno
+                state["first_col"] = s.col_offset
+        for attr in ("body", "orelse", "finalbody"):
+            sub = getattr(s, attr, None)
+            if sub:
+                _count_return_stmts(sub, state)
+        if isinstance(s, ast.Try):
+            for handler in s.handlers:
+                _count_return_stmts(handler.body, state)
+        if isinstance(s, ast.Match):
+            for case in s.cases:
+                _count_return_stmts(case.body, state)
+
+
+def detect_too_many_returns(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    threshold: int = DEFAULT_TOO_MANY_RETURNS,
+) -> Tag | None:
+    state: dict[str, int] = {"count": 0, "first_line": 0, "first_col": 0}
+    _count_return_stmts(func.body, state)
+    if state["count"] < threshold:
+        return None
+    return Tag(
+        name="too-many-returns",
+        detail=(
+            f"Function has {state['count']} return statements (threshold: {threshold}). "
+            f"Multiple exit points can signal a function handling too many cases "
+            f"or lacking a single-exit strategy. "
+            f"Source note: Martin, Clean Code (2008) prefers single exit; "
+            f"no hard research-backed threshold. pylint R0911 defaults to 6."
+        ),
+        line=state["first_line"] or func.lineno,
+        col=state["first_col"] or func.col_offset,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Registry of Tier 1 detectors
 # ---------------------------------------------------------------------------
 #
@@ -696,4 +897,7 @@ TIER1_DETECTORS: tuple[
     ("if-on-parameter", detect_if_on_parameter),
     ("magic-numbers", detect_magic_numbers),
     ("dynamic-magic", detect_dynamic_magic),
+    ("broad-except", detect_broad_except),
+    ("mutable-default-arg", detect_mutable_default_arg),
+    ("too-many-returns", detect_too_many_returns),
 )

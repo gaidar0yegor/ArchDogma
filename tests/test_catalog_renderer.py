@@ -81,8 +81,33 @@ def test_v01_priorities_get_marker(real_catalog: Catalog) -> None:
         )
 
 
-def test_stub_dogmas_get_placeholder(real_catalog: Catalog) -> None:
-    out = render_catalog(real_catalog)
+def test_stub_dogmas_get_placeholder() -> None:
+    """A `status: stub` dogma must render with the placeholder marker.
+
+    Uses a synthetic catalog so the test stays valid as the real catalog
+    fills in stubs over time.
+    """
+    stub = DogmaRef(
+        id="stubby",
+        number=1,
+        title="Stub Dogma",
+        status="stub",
+        raw={
+            "id": "stubby",
+            "number": 1,
+            "title": "Stub Dogma",
+            "status": "stub",
+            "definition": "Stubbed for now.",
+        },
+    )
+    cat = Catalog(
+        schema_version=1,
+        dogmas=(stub,),
+        candidates=(),
+        tag_index={},
+        updated=None,
+    )
+    out = render_catalog(cat)
     assert "Cases and honest verdict not yet filled in (status `stub`)" in out
 
 
