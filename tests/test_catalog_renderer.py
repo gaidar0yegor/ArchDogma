@@ -48,12 +48,10 @@ def test_render_is_deterministic(real_catalog: Catalog) -> None:
     assert a == b
 
 
-def test_render_produces_utf8_russian(real_catalog: Catalog) -> None:
+def test_render_produces_utf8_output(real_catalog: Catalog) -> None:
     out = render_catalog(real_catalog)
-    # Russian text from the catalog must round-trip — no mojibake,
-    # no latin-only degradation.
-    assert "Каталог догм" in out
-    assert "Определение" in out
+    assert "Dogma Catalog" in out
+    assert "Definition" in out
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +83,7 @@ def test_v01_priorities_get_marker(real_catalog: Catalog) -> None:
 
 def test_stub_dogmas_get_placeholder(real_catalog: Catalog) -> None:
     out = render_catalog(real_catalog)
-    assert "Кейсы и honest verdict пока не заполнены (статус `stub`)" in out
+    assert "Cases and honest verdict not yet filled in (status `stub`)" in out
 
 
 def test_filled_dogma_renders_counter_dogmas(real_catalog: Catalog) -> None:
@@ -106,8 +104,8 @@ def test_counter_dogmas_render_attribution(real_catalog: Catalog) -> None:
 
 def test_honest_verdict_renders_follow_break_main(real_catalog: Catalog) -> None:
     out = render_catalog(real_catalog)
-    assert "Следуй догме, когда" in out
-    assert "Ломай догму, когда" in out
+    assert "Follow the dogma when" in out
+    assert "Break the dogma when" in out
     assert "Main signal" in out
 
 
@@ -118,7 +116,7 @@ def test_honest_verdict_renders_follow_break_main(real_catalog: Catalog) -> None
 
 def test_candidates_section_present(real_catalog: Catalog) -> None:
     out = render_catalog(real_catalog)
-    assert "## Кандидаты" in out
+    assert "## Candidates" in out
     assert "God File / God Class" in out
 
 
@@ -172,7 +170,7 @@ def test_synth_minimal_renders_all_sections() -> None:
     assert "Just a test." in out
     assert "**Counter**" in out
     assert "Author 2020" in out
-    assert "## Кандидаты" in out
+    assert "## Candidates" in out
     assert "A Candidate" in out
 
 
@@ -185,7 +183,7 @@ def test_empty_candidates_section_omitted() -> None:
         updated=None,
     )
     out = render_catalog(cat)
-    assert "## Кандидаты" not in out
+    assert "## Candidates" not in out
 
 
 # ---------------------------------------------------------------------------

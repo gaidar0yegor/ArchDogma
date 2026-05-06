@@ -1,4 +1,4 @@
-"""Catalog validator — six rules from ADR-002 §"Правила, которые будет проверять валидатор".
+"""Catalog validator — six rules from ADR-002 §"Rules checked by the validator".
 
 Rules (numbered per ADR-002 order):
 

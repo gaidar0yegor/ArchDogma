@@ -1,39 +1,39 @@
 <!-- AUTO-GENERATED from catalog/dogmas.yaml — DO NOT EDIT BY HAND. Run: archdogma render-catalog -->
 
-# Каталог догм
+# Dogma Catalog
 
-_Обновлено: 2026-04-30 — schema v1._
+_Updated: 2026-04-30 — schema v1._
 
-Правила каталога:
+Catalog rules:
 
-- Каждое утверждение имеет источник. Без источника — `honesty-bug`.
-- Каждая контр-догма имеет `attribution`. Без автора — тоже `honesty-bug`.
-- Догма, помеченная 🎯 v0.1-priority, обязана иметь статус не ниже `draft`.
-- Отсутствие тега ≠ отсутствие проблемы.
+- Every claim has a source. Without a source — `honesty-bug`.
+- Every counter-dogma has `attribution`. Without an author — also `honesty-bug`.
+- A dogma marked 🎯 v0.1-priority must have status no lower than `draft`.
+- Absence of a tag ≠ absence of a problem.
 
 ## §1. 100% Test Coverage  \[stub\]
 
-**Определение.** Everything must be covered by unit tests. Uncovered code is a risk.
+**Definition.** Everything must be covered by unit tests. Uncovered code is a risk.
 
 **Origin.** TDD movement, Kent Beck, Uncle Bob, XP.
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §2. Clean Architecture / N Layers of Abstraction  \[stub\]
 
-**Определение.** Split code into layers (domain, application, infrastructure, presentation). Dependencies point inward.
+**Definition.** Split code into layers (domain, application, infrastructure, presentation). Dependencies point inward.
 
 **Origin.** Uncle Bob, «Clean Architecture». Previously Hexagonal/Onion Architecture.
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §3. DRY (Don't Repeat Yourself) 🎯  \[filled\]
 
-**Определение.** Never copy-paste. Any repetition is a candidate for abstraction.
+**Definition.** Never copy-paste. Any repetition is a candidate for abstraction.
 
 **Origin.** «The Pragmatic Programmer», Hunt & Thomas, 1999.
 
-**Условия провала.**
+**Failure conditions.**
 
 - When two similar things are merged into one abstraction and then diverge.
 - Shared libraries between teams with different release cycles.
@@ -47,7 +47,7 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 - _need_data_
 
-**Контр-догмы.**
+**Counter-dogmas.**
 
 - **WET (Write Everything Twice)** — _folk, anonymous_
   > Don't abstract until you've seen the repetition twice.
@@ -60,13 +60,13 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 **Honest verdict** \[draft_awaiting_cases\].
 
-_Следуй догме, когда:_
+_Follow the dogma when:_
 
 - Knowledge repeats (business rule, formula, invariant), not code form.
 - You see the third repetition (Rule of Three), and all three are called from the same context / same team / same release cycle.
 - Cost of a wrong abstraction is lower than cost of duplication.
 
-_Ломай догму, когда:_
+_Break the dogma when:_
 
 - Two code pieces look the same but change for different reasons (different stakeholders, different release cycles, different domains).
 - The abstraction crosses team or service boundaries.
@@ -79,11 +79,11 @@ _Ломай догму, когда:_
 
 ## §4. Microservices for Everything 🎯  \[filled\]
 
-**Определение.** Monolith is evil. Cut the system into small services.
+**Definition.** Monolith is evil. Cut the system into small services.
 
 **Origin.** Netflix, Amazon, ThoughtWorks, ~2014.
 
-**Условия провала.**
+**Failure conditions.**
 
 - Team < 10 people.
 - One product, not independent business units.
@@ -98,7 +98,7 @@ _Ломай догму, когда:_
 
 - Netflix, Amazon (at a certain scale) — Need specific post-mortem links with numbers.
 
-**Контр-догмы.**
+**Counter-dogmas.**
 
 - **MonolithFirst** — _Martin Fowler, 2015_ ([source](https://martinfowler.com/bliki/MonolithFirst.html))
   > Almost all successful microservice systems started as monoliths and were split later.
@@ -109,13 +109,13 @@ _Ломай догму, когда:_
 
 **Honest verdict** \[draft_awaiting_cases\].
 
-_Следуй догме, когда:_
+_Follow the dogma when:_
 
 - You genuinely have multiple independent business domains with different teams, release cycles, and scale.
 - Team is larger than 10–15 people and there's concrete pain from the monolith already.
 - You're willing to pay the operational cost of a distributed system.
 
-_Ломай догму, когда:_
+_Break the dogma when:_
 
 - Team < 10 people and/or one product.
 - Project is in startup / MVP phase — domain hasn't stabilized yet.
@@ -127,21 +127,21 @@ _Ломай догму, когда:_
 
 ## §5. OOP as the Only Truth (inheritance everywhere)  \[stub\]
 
-**Определение.** Everything is an object. Inheritance is the primary tool for reuse.
+**Definition.** Everything is an object. Inheritance is the primary tool for reuse.
 
 **Origin.** Smalltalk, Java, GoF Design Patterns.
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 **Related tags:** `deep-inheritance`.
 
 ## §6. TDD (Test-Driven Development) 🎯  \[filled\]
 
-**Определение.** Red-Green-Refactor. Write the test first, then the code.
+**Definition.** Red-Green-Refactor. Write the test first, then the code.
 
 **Origin.** Kent Beck.
 
-**Условия провала.**
+**Failure conditions.**
 
 - Unknown domain — you don't yet know what the API should look like.
 - UI code, visualizations.
@@ -155,7 +155,7 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 - _need_data_
 
-**Контр-догмы.**
+**Counter-dogmas.**
 
 - **Spike First** — _Kent Beck, «Extreme Programming Explained» (1999)_
   > In an unknown domain, first a spike (throwaway prototype without tests), then discard it, then rewrite with TDD.
@@ -168,13 +168,13 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 **Honest verdict** \[draft_awaiting_cases\].
 
-_Следуй догме, когда:_
+_Follow the dogma when:_
 
 - You already understand the domain and roughly know what the API should look like.
 - Working on stable business logic you plan to refactor.
 - Cost of a production error is very high (finance, security, medicine, billing).
 
-_Ломай догму, когда:_
+_Break the dogma when:_
 
 - You're in an unknown domain — use Spike First.
 - Working with UI, complex visual states, or external integrations — Test After.
@@ -186,45 +186,45 @@ _Ломай догму, когда:_
 
 ## §7. SOLID as Law  \[stub\]
 
-**Определение.** SRP, OCP, LSP, ISP, DIP — five principles all code must follow.
+**Definition.** SRP, OCP, LSP, ISP, DIP — five principles all code must follow.
 
 **Origin.** Uncle Bob, 2000s.
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §8. Self-documenting code (no comments needed)  \[stub\]
 
-**Определение.** Good code reads without comments. Comments are a sign of unclear code.
+**Definition.** Good code reads without comments. Comments are a sign of unclear code.
 
 **Origin.** Uncle Bob, «Clean Code».
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §9. Premature optimization is the root of all evil  \[stub\]
 
-**Определение.** Don't optimize until you've profiled. (Usually cited without context.)
+**Definition.** Don't optimize until you've profiled. (Usually cited without context.)
 
 **Origin.** Donald Knuth, 1974. Full quote: «We should forget about small efficiencies, say about 97% of the time: premature optimization is the root of all evil. Yet we should not pass up our opportunities in that critical 3%.»
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §10. Functional purity / Immutability everywhere  \[stub\]
 
-**Определение.** Avoid mutations. Pure functions. No side effects.
+**Definition.** Avoid mutations. Pure functions. No side effects.
 
 **Origin.** Haskell community, FP renaissance of the 2010s, React/Redux.
 
-_Кейсы и honest verdict пока не заполнены (статус `stub`)._
+_Cases and honest verdict not yet filled in (status `stub`)._
 
 ## §11. KISS (Keep It Simple, Stupid)  \[draft\]
 
-**Определение.** Prefer simple solutions over complex ones. Complexity is the enemy. Remove everything that isn't strictly necessary.
+**Definition.** Prefer simple solutions over complex ones. Complexity is the enemy. Remove everything that isn't strictly necessary.
 
 
 **Origin.** U.S. Navy, 1960. Kelly Johnson (Lockheed Skunk Works) insisted aircraft be repairable in combat with basic tools. Software adoption via Unix philosophy («Do one thing well») and later «Clean Code» culture.
 
 
-**Условия провала.**
+**Failure conditions.**
 
 - KISS used as a reason to avoid thinking deeply about the problem.
 - Simplicity of implementation confused with simplicity of the model.
@@ -240,7 +240,7 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 - _need_data_
 
-**Контр-догмы.**
+**Counter-dogmas.**
 
 - **Simple but Smart = Genius** — _Yegor Gaidar, 2026 (ArchDogma issue ARC-222)_
   > KISS without intelligence produces dumb simplicity. Real mastery is achieving simple interfaces over genuinely complex systems — not pretending complexity doesn't exist. Minecraft: one voxel, infinite depth. Einstein: «Everything should be made as simple as possible, but not simpler.»
@@ -254,13 +254,13 @@ _Кейсы и honest verdict пока не заполнены (статус `st
 
 **Honest verdict** \[draft_awaiting_cases\].
 
-_Следуй догме, когда:_
+_Follow the dogma when:_
 
 - Two designs solve the same problem — pick the one with fewer moving parts.
 - Complexity is coming from your design choices, not from the domain.
 - You can remove something and the system still correctly handles all real cases.
 
-_Ломай догму, когда:_
+_Break the dogma when:_
 
 - The problem is genuinely complex — KISS doesn't simplify the problem, just hides it.
 - You're simplifying the wrong layer (impl) while complicating the right one (API/model).
@@ -271,15 +271,15 @@ _Ломай догму, когда:_
 
 
 
-## Кандидаты
+## Candidates
 
-Антипаттерны и догмы-в-наблюдении. Не имеют §-номера; могут быть promoted в `dogmas` после накопления кейсов.
+Anti-patterns and dogmas-in-observation. No §-number; can be promoted to `dogmas` once enough cases accumulate.
 
 ### God File / God Class  \[god-class\]
 
 Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tests + deadlines.
 
-**Источники.**
+**Sources.**
 
 - [SQLite amalgamation — deliberate performance decision (~238k lines)](https://sqlite.org/amalgamation.html)
 - [Knight Capital 2012 — $440M from dead code in legacy](https://www.sec.gov/litigation/admin/2013/34-70694.pdf)
@@ -291,7 +291,7 @@ Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tes
 
 Classic code smell — when a signature demands too much, it can usually be split into a parameter object, keyword-only namespace, or two different functions.
 
-**Источники.**
+**Sources.**
 
 - Martin Fowler, «Refactoring» (1999/2018) — Long Parameter List
 - Robert C. Martin, «Clean Code» (2008): «Three arguments should be avoided where possible. More than three requires very special justification.»
@@ -336,9 +336,9 @@ Classic code smell — when a signature demands too much, it can usually be spli
 
 ---
 
-## Контрибьюция
+## Contributing
 
-Источник правды — `catalog/dogmas.yaml`. Правки идут туда, этот
-файл перегенерируется через `archdogma render-catalog`.
-Если нашёл расхождение между YAML и .md — значит забыли перегенерировать.
-Репортни баг, не правь `.md` руками.
+Source of truth — `catalog/dogmas.yaml`. All edits go there; this
+file is regenerated via `archdogma render-catalog`.
+If you spot a discrepancy between YAML and .md — someone forgot to regenerate.
+Report a bug; do not edit `.md` by hand.

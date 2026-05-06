@@ -12,7 +12,7 @@
 #     (DRY/Microservices — not detectable from a single function, that's honest)
 
 schema_version: 1
-updated: 2026-04-18
+updated: 2026-04-30
 
 dogmas:
 
@@ -245,6 +245,74 @@ dogmas:
     origin: "Haskell community, FP renaissance of the 2010s, React/Redux."
     related_tags: []
 
+  # -------------------------------------------------------------------------
+  # 11. KISS (Keep It Simple, Stupid) — draft
+  # -------------------------------------------------------------------------
+  - id: kiss
+    number: 11
+    title: "KISS (Keep It Simple, Stupid)"
+    status: draft
+    definition: >
+      Prefer simple solutions over complex ones. Complexity is the enemy.
+      Remove everything that isn't strictly necessary.
+    origin: >
+      U.S. Navy, 1960. Kelly Johnson (Lockheed Skunk Works) insisted aircraft
+      be repairable in combat with basic tools. Software adoption via Unix
+      philosophy («Do one thing well») and later «Clean Code» culture.
+
+    failure_conditions:
+      - "KISS used as a reason to avoid thinking deeply about the problem."
+      - "Simplicity of implementation confused with simplicity of the model."
+      - "Removing real complexity that the domain actually has — just hiding it elsewhere."
+      - "Team conflates 'familiar' with 'simple'."
+      - "'Stupid' in the slogan is taken literally — optimizing for the dumbest solution, not the clearest one."
+
+    failure_cases: need_postmortems
+    success_cases: need_data
+
+    counter_dogmas:
+      - name: "Simple but Smart = Genius"
+        attribution: "Yegor Gaidar, 2026 (ArchDogma issue ARC-222)"
+        thesis: >
+          KISS without intelligence produces dumb simplicity. Real mastery is
+          achieving simple interfaces over genuinely complex systems — not
+          pretending complexity doesn't exist. Minecraft: one voxel, infinite
+          depth. Einstein: «Everything should be made as simple as possible,
+          but not simpler.»
+      - name: "Simple Made Easy"
+        attribution: "Rich Hickey, Strange Loop 2011"
+        source_url: "https://www.infoq.com/presentations/Simple-Made-Easy/"
+        thesis: >
+          «Simple» (few interleaved concerns) ≠ «easy» (familiar/convenient).
+          Easy solutions can be complected. The goal is simplicity of the model,
+          not ease of the implementation.
+      - name: "Worse Is Better"
+        attribution: "Richard Gabriel, 1989"
+        source_url: "https://www.dreamsongs.com/WIB.html"
+        thesis: >
+          The «New Jersey style» — simple implementation, imperfect interface —
+          often wins in practice over the «MIT style» correct-interface design.
+          A warning that KISS can be weaponized to ship deliberately incomplete
+          things.
+
+    honest_verdict:
+      status: draft_awaiting_cases
+      follow_when:
+        - "Two designs solve the same problem — pick the one with fewer moving parts."
+        - "Complexity is coming from your design choices, not from the domain."
+        - "You can remove something and the system still correctly handles all real cases."
+      break_when:
+        - "The problem is genuinely complex — KISS doesn't simplify the problem, just hides it."
+        - "You're simplifying the wrong layer (impl) while complicating the right one (API/model)."
+        - "The 'simple' solution requires callers to carry the complexity you refused to encode."
+        - "You're optimizing for lines of code, not for conceptual clarity."
+      main_signal: >
+        Every new edge case requires a workaround in the calling code. Your
+        'simple' core is pushing complexity outward — that's not KISS, that's
+        a tax on every consumer.
+
+    related_tags: []  # cross-cutting concern; not detectable from a single function
+
 # -----------------------------------------------------------------------------
 # Candidates — dogmas and anti-patterns not yet broken down to full catalog level.
 # Can be promoted to dogmas once enough cases accumulate.
@@ -280,8 +348,6 @@ candidates:
 
   - id: yagni
     title: "YAGNI (You Aren't Gonna Need It)"
-  - id: kiss
-    title: "KISS (Keep It Simple, Stupid)"
   - id: agile-rituals
     title: "Agile and its rituals"
   - id: config-over-code

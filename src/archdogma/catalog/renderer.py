@@ -7,8 +7,8 @@ Goals:
 - Deterministic output — same input, same bytes. Enables `render --check`.
 - No creative prose. The renderer is a transform, not an author. If a field
   isn't in the YAML, the renderer writes a short honest placeholder
-  (e.g., "нет кейсов пока — статус `stub`").
-- UTF-8 / русский язык — explicit, no transliteration.
+  (e.g., "no cases yet — status `stub`").
+- UTF-8 — explicit, no transliteration.
 
 Not goals for alpha3:
 - Jinja2 / template language. The YAML already is the template; a Python
@@ -39,10 +39,10 @@ def render_catalog(catalog: Catalog) -> str:
     it verbatim produces POSIX-clean files.
     """
     lines: list[str] = [AUTOGEN_BANNER.rstrip("\n"), ""]
-    lines.append("# Каталог догм")
+    lines.append("# Dogma Catalog")
     lines.append("")
     if catalog.updated:
-        lines.append(f"_Обновлено: {catalog.updated} — schema v{catalog.schema_version}._")
+        lines.append(f"_Updated: {catalog.updated} — schema v{catalog.schema_version}._")
         lines.append("")
 
     lines.extend(_render_preamble())
@@ -54,11 +54,11 @@ def render_catalog(catalog: Catalog) -> str:
         lines.append("")
 
     if catalog.candidates:
-        lines.append("## Кандидаты")
+        lines.append("## Candidates")
         lines.append("")
         lines.append(
-            "Антипаттерны и догмы-в-наблюдении. Не имеют §-номера; могут быть "
-            "promoted в `dogmas` после накопления кейсов."
+            "Anti-patterns and dogmas-in-observation. No §-number; can be "
+            "promoted to `dogmas` once enough cases accumulate."
         )
         lines.append("")
         for c in catalog.candidates:
@@ -76,12 +76,12 @@ def render_catalog(catalog: Catalog) -> str:
 
 def _render_preamble() -> list[str]:
     return [
-        "Правила каталога:",
+        "Catalog rules:",
         "",
-        "- Каждое утверждение имеет источник. Без источника — `honesty-bug`.",
-        "- Каждая контр-догма имеет `attribution`. Без автора — тоже `honesty-bug`.",
-        "- Догма, помеченная 🎯 v0.1-priority, обязана иметь статус не ниже `draft`.",
-        "- Отсутствие тега ≠ отсутствие проблемы.",
+        "- Every claim has a source. Without a source — `honesty-bug`.",
+        "- Every counter-dogma has `attribution`. Without an author — also `honesty-bug`.",
+        "- A dogma marked 🎯 v0.1-priority must have status no lower than `draft`.",
+        "- Absence of a tag ≠ absence of a problem.",
     ]
 
 
@@ -89,12 +89,12 @@ def _render_postamble() -> list[str]:
     return [
         "---",
         "",
-        "## Контрибьюция",
+        "## Contributing",
         "",
-        "Источник правды — `catalog/dogmas.yaml`. Правки идут туда, этот",
-        "файл перегенерируется через `archdogma render-catalog`.",
-        "Если нашёл расхождение между YAML и .md — значит забыли перегенерировать.",
-        "Репортни баг, не правь `.md` руками.",
+        "Source of truth — `catalog/dogmas.yaml`. All edits go there; this",
+        "file is regenerated via `archdogma render-catalog`.",
+        "If you spot a discrepancy between YAML and .md — someone forgot to regenerate.",
+        "Report a bug; do not edit `.md` by hand.",
     ]
 
 
@@ -107,13 +107,13 @@ def _render_dogma(d: DogmaRef) -> list[str]:
     if d.status == "stub":
         defn = d.raw.get("definition")
         if defn:
-            lines.append(f"**Определение.** {defn}")
+            lines.append(f"**Definition.** {defn}")
             lines.append("")
         origin = d.raw.get("origin")
         if origin:
             lines.append(f"**Origin.** {origin}")
             lines.append("")
-        lines.append("_Кейсы и honest verdict пока не заполнены (статус `stub`)._")
+        lines.append("_Cases and honest verdict not yet filled in (status `stub`)._")
         if d.related_tags:
             lines.append("")
             lines.append(
@@ -124,7 +124,7 @@ def _render_dogma(d: DogmaRef) -> list[str]:
     # Filled / draft — full render.
     defn = d.raw.get("definition")
     if defn:
-        lines.append(f"**Определение.** {defn}")
+        lines.append(f"**Definition.** {defn}")
         lines.append("")
 
     origin = d.raw.get("origin")
@@ -134,7 +134,7 @@ def _render_dogma(d: DogmaRef) -> list[str]:
 
     failure_conditions = d.raw.get("failure_conditions") or []
     if failure_conditions:
-        lines.append("**Условия провала.**")
+        lines.append("**Failure conditions.**")
         lines.append("")
         for item in failure_conditions:
             lines.append(f"- {item}")
@@ -145,7 +145,7 @@ def _render_dogma(d: DogmaRef) -> list[str]:
 
     counter_dogmas = d.raw.get("counter_dogmas") or []
     if counter_dogmas:
-        lines.append("**Контр-догмы.**")
+        lines.append("**Counter-dogmas.**")
         lines.append("")
         for cd in counter_dogmas:
             lines.extend(_render_counter_dogma(cd))
@@ -172,7 +172,7 @@ def _render_candidate(c: CandidateRef) -> list[str]:
 
     sources = c.raw.get("sources") or []
     if sources:
-        lines.append("**Источники.**")
+        lines.append("**Sources.**")
         lines.append("")
         for s in sources:
             lines.append(_format_source(s))
@@ -236,7 +236,7 @@ def _format_source(item) -> str:
 
 def _render_counter_dogma(cd: dict) -> list[str]:
     name = cd.get("name") or "(untitled)"
-    attribution = cd.get("attribution") or "⚠ без attribution (honesty-bug)"
+    attribution = cd.get("attribution") or "⚠ missing attribution (honesty-bug)"
     thesis = cd.get("thesis")
     url = cd.get("source_url")
     head = f"- **{name}** — _{attribution}_"
@@ -255,7 +255,7 @@ def _render_honest_verdict(v: dict) -> list[str]:
 
     follow = v.get("follow_when") or []
     if follow:
-        lines.append("_Следуй догме, когда:_")
+        lines.append("_Follow the dogma when:_")
         lines.append("")
         for f in follow:
             lines.append(f"- {f}")
@@ -263,7 +263,7 @@ def _render_honest_verdict(v: dict) -> list[str]:
 
     brk = v.get("break_when") or []
     if brk:
-        lines.append("_Ломай догму, когда:_")
+        lines.append("_Break the dogma when:_")
         lines.append("")
         for b in brk:
             lines.append(f"- {b}")
