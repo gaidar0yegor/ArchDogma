@@ -5,6 +5,21 @@ All notable changes are recorded here. Format based on
 [SemVer](https://semver.org/), but on pre-alpha the major/minor aren't stable yet:
 breaking changes are allowed in any release before `0.1.0`.
 
+## [0.1.0] — 2026-05-07
+
+### Added
+- 11 Tier 1 detectors: `long-function`, `too-many-params`, `nested-loops`,
+  `missing-docstring`, `broad-except`, `mutable-default-arg`, `too-many-returns`,
+  `if-on-parameter`, `magic-numbers`, `dynamic-magic`, `god-class`, `deep-inheritance`
+- 7 dogma entries in catalog: DRY, KISS, SOLID, TDD, YAGNI, Fail Fast, Law of Demeter
+- `god-class` and `deep-inheritance` detectors wired into walker via `probe_class`
+- 281 tests, all passing
+
+### Changed
+- Version bumped from `0.1.0.dev0` to `0.1.0`
+- Development status: Pre-Alpha → Alpha
+- Author email corrected to `maingaidar@gmail.com`
+
 ## [Unreleased]
 
 ### Added

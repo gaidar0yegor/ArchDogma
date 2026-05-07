@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "archdogma"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Honest analysis of one function at a time. Catalog of programming dogmas with real post-mortems."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "Yegor Gaidar", email = "laurent.tubiana@free.fr" },
+    { name = "Yegor Gaidar", email = "maingaidar@gmail.com" },
 ]
 keywords = [
     "static-analysis",
@@ -20,7 +20,7 @@ keywords = [
     "programming-dogmas",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -38,6 +38,12 @@ dependencies = [
     "pyttsx3>=2.90",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/gaidar0yegor/ArchDogma"
+Repository = "https://github.com/gaidar0yegor/ArchDogma"
+Issues = "https://github.com/gaidar0yegor/ArchDogma/issues"
+Changelog = "https://github.com/gaidar0yegor/ArchDogma/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 git = [
