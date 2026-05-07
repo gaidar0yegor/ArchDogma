@@ -6,10 +6,46 @@
 
 > **Let me tell you a story.**
 
-Analyzes one function — honestly, without made-up numbers.
+Analyzes Python code — honestly, without made-up numbers.
 Shows sacred rules of programming — with real post-mortems, not horoscopes.
 
 Two verifiable things. Not one beautiful one.
+
+---
+
+## Install
+
+```bash
+pip install archdogma
+```
+
+## Quick Start
+
+**Probe a single function** — get a Trust Score, AST tags, and linked dogmas:
+
+```bash
+archdogma probe mymodule.py -f MyClass.process
+```
+
+**Scan a whole project** — probe every function and class, CI-ready:
+
+```bash
+archdogma scan src/
+archdogma scan src/ --exclude 'tests/**' --format json
+archdogma scan src/ --fail   # exit 1 if any tag fires (default in CI)
+```
+
+**List the dogma catalog:**
+
+```bash
+archdogma dogmas
+```
+
+**Voice mode** — "Tell me the story" — for accessible audio output:
+
+```bash
+archdogma probe mymodule.py -f my_function --speak
+```
 
 ---
 
@@ -55,21 +91,24 @@ The Catalog for that tag returns: "Here are 2 real cases where `deep-inheritance
 
 Not an abstract "try to simplify". But: "here's who already slipped, here's what the fall looked like".
 
-In v0.1 the connection is implemented dumbly and honestly — via pattern-match on AST. No semantic magic. When pattern-match stops working, we'll honestly add something smarter.
+In v0.2 the connection is implemented dumbly and honestly — via pattern-match on AST. No semantic magic. When pattern-match stops working, we'll honestly add something smarter.
 
 ---
 
-## What's Actually in v0.1 (Honest Scope)
+## What's Actually in v0.2.0 (Honest Scope)
 
-- **Function Probe** for a single Python function — AST analysis, typical patterns (`deep-inheritance`, `n-layers-deep`, `test-heavy`), Trust Score on verifiable signals (code age, test coverage, complexity)
+- **Function Probe** (`archdogma probe`) — AST analysis of one Python function: Trust Score, hidden assumptions, likely failure points. Verifiable signals only — no expert numbers from thin air
+- **Codebase Scan** (`archdogma scan`) — walks a file or directory, probes every function and class, supports `--format json` and `--fail` for CI integration
+- **12 Tier 1 detectors**, covering: `deep-inheritance`, `god-class`, `magic-numbers`, `if-on-parameter`, `dynamic-magic`, `broad-except`, `mutable-default-arg`, `too-many-returns`, and more — all with real AST evidence, no heuristics
+- **300 passing tests** — no magic, no mocks on the core analysis path
 - **3 fully filled dogmas** in the catalog with real post-mortem links:
   1. **Microservices for everything** (Segment, Prime Video, and friends)
   2. **TDD as law** (DHH, 2014)
   3. **DRY / premature abstractions** (Sandi Metz)
-- The remaining 7+ dogmas are in the catalog as drafts (`[NEED POSTMORTEMS]`). We **don't hide** that the catalog is in its early stages. An honest "Draft" label is in the header
-- **Voice mode** — "Tell me the story" — from day one, not "later"
+- The remaining dogmas are in the catalog as drafts (`[NEED POSTMORTEMS]`). We **don't hide** that the catalog is in its early stages. An honest "Draft" label is in the header
+- **Voice mode** (`--speak`) — "Tell me the story" — accessible audio from day one, not "later"
 
-Realistic horizon: 2–4 months. Not 3 weeks, not a year.
+Realistic roadmap: god-class / deep-inheritance depth improvements, more filled dogmas, semantic probe wiring. Not 3 weeks, not a year.
 
 ---
 
