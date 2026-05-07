@@ -11,8 +11,8 @@ v0.1 target set (see AST_TAGS_DRAFT.md):
     - broad-except           ← implemented
     - mutable-default-arg    ← implemented
     - too-many-returns       ← implemented
-    - god-class              ← pending (class-level, requires walker extension)
-    - deep-inheritance       ← pending (class-level, single-file slice)
+    - god-class              ← implemented (class-level)
+    - deep-inheritance       ← implemented (class-level, single-file slice)
 
 All thresholds are defaults per AST_TAGS_DRAFT.md and are configurable.
 No threshold is treated as research-proven unless explicitly cited in the draft.
@@ -29,7 +29,8 @@ DEFAULT_LONG_FUNCTION_LOC = 80
 DEFAULT_GOD_FUNCTION_LOC = 200
 DEFAULT_GOD_FUNCTION_BRANCHES = 15
 DEFAULT_GOD_CLASS_LOC = 500
-DEFAULT_GOD_CLASS_METHODS = 25
+DEFAULT_GOD_CLASS_METHODS = 15
+DEFAULT_GOD_CLASS_ATTRS = 5
 DEFAULT_DEEP_INHERITANCE_DEPTH = 4
 DEFAULT_IF_ON_PARAMETER_BRANCHES = 3
 DEFAULT_TOO_MANY_PARAMS = 5
@@ -900,4 +901,219 @@ TIER1_DETECTORS: tuple[
     ("broad-except", detect_broad_except),
     ("mutable-default-arg", detect_mutable_default_arg),
     ("too-many-returns", detect_too_many_returns),
+)
+
+
+# ---------------------------------------------------------------------------
+# god-class
+# ---------------------------------------------------------------------------
+#
+# Two coupled signals on a class: number of methods declared directly in the
+# body, and number of distinct instance attributes assigned via `self.X = ...`
+# inside __init__.
+#
+# Flag rules:
+#   methods > 15                                       → god-class
+#   methods > 8 AND instance_attributes > 5            → god-class
+#
+# Method count: direct FunctionDef + AsyncFunctionDef inside ClassDef.body.
+# @staticmethod / @classmethod methods count the same — they are still
+# FunctionDef nodes; the decorators don't change the AST type. Methods on
+# nested classes do NOT contribute to the outer class — only the nested
+# class itself sees them.
+#
+# Attribute count: distinct names X assigned via `self.X = ...` (or augmented
+# / annotated assignments) inside the class's __init__. We don't trace flow
+# through helper methods called from __init__ — that's a different shape of
+# work and Tier 2 territory.
+#
+# No research-backed thresholds. Numbers chosen as conservative defaults; the
+# AND-condition prevents flagging dataclass-style classes (many fields, few
+# methods) and pure-method utility classes (many methods, no state).
+
+
+def _count_direct_methods(cls: ast.ClassDef) -> int:
+    return sum(
+        1
+        for n in cls.body
+        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+    )
+
+
+def _find_init(cls: ast.ClassDef) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    for n in cls.body:
+        if (
+            isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+            and n.name == "__init__"
+        ):
+            return n
+    return None
+
+
+def _collect_self_attrs(stmts: list[ast.stmt], names: set[str]) -> None:
+    """Record every `self.X` target name written inside `stmts` (recursive)."""
+    for s in stmts:
+        if isinstance(s, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            continue  # scope boundary — nested defs in __init__ don't count
+        for node in ast.walk(s):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    _record_self_target(target, names)
+            elif isinstance(node, ast.AugAssign | ast.AnnAssign):
+                _record_self_target(node.target, names)
+
+
+def _record_self_target(target: ast.expr, names: set[str]) -> None:
+    if (
+        isinstance(target, ast.Attribute)
+        and isinstance(target.value, ast.Name)
+        and target.value.id == "self"
+    ):
+        names.add(target.attr)
+    elif isinstance(target, ast.Tuple | ast.List):
+        for elt in target.elts:
+            _record_self_target(elt, names)
+
+
+def detect_god_class(cls: ast.ClassDef) -> list[dict]:
+    """Return a list of god-class flag dicts (0 or 1 element).
+
+    Returned dict shape: {tag, lineno, col_offset, detail}.
+    The list shape is uniform with other class-level detectors and leaves
+    room for future multi-flag detectors without changing the call site.
+    """
+    methods = _count_direct_methods(cls)
+    init = _find_init(cls)
+    attrs: set[str] = set()
+    if init is not None:
+        _collect_self_attrs(init.body, attrs)
+    n_attrs = len(attrs)
+
+    if methods > 15 or (methods > 8 and n_attrs > 5):
+        return [
+            {
+                "tag": "god-class",
+                "lineno": cls.lineno,
+                "col_offset": cls.col_offset,
+                "detail": f"{methods} methods, {n_attrs} attrs",
+            }
+        ]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# deep-inheritance
+# ---------------------------------------------------------------------------
+#
+# Two signals on a class:
+#   - multiple inheritance: more than one base, where at least one base is
+#     not the literal `object`. Pure single inheritance and `class C(object):`
+#     do not flag.
+#   - depth: longest chain of bases resolvable to ClassDef nodes in the SAME
+#     file. Capped at 4 levels of walking to avoid pathological recursion;
+#     unresolved bases (imports, builtins) terminate the chain at +1.
+#
+# Flag rules:
+#   len(bases) > 1 AND not all bases are `object`     → deep-inheritance
+#   depth > 3                                          → deep-inheritance
+#
+# Depth convention: a class with no bases has depth 1. `class B(A)` where A
+# is in this file and has no bases has depth 2. The chain A←B←C←D yields
+# depth 4 and flags D.
+
+
+_OBJECT_NAME = "object"
+
+
+def _is_object_base(base: ast.expr) -> bool:
+    return isinstance(base, ast.Name) and base.id == _OBJECT_NAME
+
+
+def _non_trivial_bases(cls: ast.ClassDef) -> list[ast.expr]:
+    return [b for b in cls.bases if not _is_object_base(b)]
+
+
+def _inheritance_depth(
+    cls: ast.ClassDef,
+    classes_in_file: dict[str, ast.ClassDef],
+    max_walk: int = 4,
+    seen: frozenset[str] = frozenset(),
+) -> int:
+    """Length of longest base chain reachable from `cls` within this file.
+
+    Returns 1 for a class with no bases. Each resolved parent adds one. An
+    unresolved base (foreign name, attribute access, etc.) adds 1 and then
+    stops. `max_walk` caps recursion depth; cycles are blocked via `seen`.
+    """
+    if not cls.bases:
+        return 1
+    if max_walk <= 0:
+        return 1
+    if cls.name in seen:
+        return 1
+    next_seen = seen | {cls.name}
+
+    best = 1
+    for base in cls.bases:
+        if isinstance(base, ast.Name):
+            parent = classes_in_file.get(base.id)
+            if parent is not None:
+                candidate = (
+                    _inheritance_depth(parent, classes_in_file, max_walk - 1, next_seen)
+                    + 1
+                )
+            else:
+                candidate = 2  # foreign / builtin parent — chain stops here
+        else:
+            candidate = 2  # attribute / call / subscript base — opaque
+        if candidate > best:
+            best = candidate
+    return best
+
+
+def detect_deep_inheritance(
+    cls: ast.ClassDef,
+    classes_in_file: dict[str, ast.ClassDef] | None = None,
+) -> list[dict]:
+    """Return a list of deep-inheritance flag dicts (0 or 1 element).
+
+    `classes_in_file` lets the depth check resolve same-file parents. When
+    omitted, the detector still catches multiple inheritance.
+    """
+    classes_in_file = classes_in_file or {}
+
+    multi = len(cls.bases) > 1 and len(_non_trivial_bases(cls)) >= 1
+    depth = _inheritance_depth(cls, classes_in_file)
+
+    if multi or depth > 3:
+        reasons: list[str] = []
+        if multi:
+            reasons.append(f"multi-inheritance ({len(cls.bases)} bases)")
+        if depth > 3:
+            reasons.append(f"depth {depth}")
+        return [
+            {
+                "tag": "deep-inheritance",
+                "lineno": cls.lineno,
+                "col_offset": cls.col_offset,
+                "detail": ", ".join(reasons),
+            }
+        ]
+    return []
+
+
+# ---------------------------------------------------------------------------
+# Registry of Tier 1 class-level detectors
+# ---------------------------------------------------------------------------
+#
+# Parallel to TIER1_DETECTORS, but for ClassDef-level signals. Each callable
+# takes an ast.ClassDef and (optionally) a {name: ClassDef} map for same-file
+# resolution, and returns a list of flag dicts {tag, lineno, col_offset,
+# detail}. Empty list = no flag.
+
+TIER1_CLASS_DETECTORS: tuple[
+    tuple[str, "object"], ...
+] = (
+    ("god-class", detect_god_class),
+    ("deep-inheritance", detect_deep_inheritance),
 )
