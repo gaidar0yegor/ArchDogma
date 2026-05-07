@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from archdogma.catalog.loader import Catalog, CandidateRef, DogmaRef
-from archdogma.probe.tags.tier1 import TIER1_DETECTORS, Tag
+from archdogma.probe.tags.tier1 import TIER1_CLASS_DETECTORS, TIER1_DETECTORS, Tag
 
 
 # A FunctionDef-like node — used liberally in signatures to keep them honest.
@@ -233,6 +233,65 @@ def probe_function(
         function_name=function_name,
         line_start=func.lineno,
         line_end=func.end_lineno or func.lineno,
+        tags=tuple(tags),
+        catalog_links=_build_catalog_links(tags, catalog),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Class-level probe support
+# ---------------------------------------------------------------------------
+
+
+def list_all_classes(tree: ast.Module) -> list[ast.ClassDef]:
+    """Return all top-level ClassDef nodes, in source order."""
+    return [n for n in tree.body if isinstance(n, ast.ClassDef)]
+
+
+def _classes_by_name(tree: ast.Module) -> dict[str, ast.ClassDef]:
+    """Map class name → ClassDef for all top-level classes in the file."""
+    return {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
+
+
+def find_class(tree: ast.Module, name: str) -> ast.ClassDef | None:
+    """Find a top-level class by name. Returns None if not found."""
+    return _classes_by_name(tree).get(name)
+
+
+def probe_class(
+    path: Path,
+    class_name: str,
+    catalog: Catalog | None = None,
+) -> ProbeResult | None:
+    """Run all Tier 1 class-level detectors against one class in `path`.
+
+    Returns None if the class is not found.
+    The class-level detector protocol: callable(cls, classes_in_file) → list[dict].
+    """
+    tree = parse_file(path)
+    cls = find_class(tree, class_name)
+    if cls is None:
+        return None
+
+    file_classes = _classes_by_name(tree)
+    tags: list[Tag] = []
+    for _tag_name, detector in TIER1_CLASS_DETECTORS:
+        flags = detector(cls, file_classes)  # type: ignore[operator]
+        for flag in flags:
+            tags.append(
+                Tag(
+                    name=flag["tag"],
+                    detail=flag["detail"],
+                    line=flag["lineno"],
+                    col=flag["col_offset"],
+                )
+            )
+
+    return ProbeResult(
+        file=path,
+        function_name=class_name,
+        line_start=cls.lineno,
+        line_end=cls.end_lineno or cls.lineno,
         tags=tuple(tags),
         catalog_links=_build_catalog_links(tags, catalog),
     )
