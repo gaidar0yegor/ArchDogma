@@ -975,7 +975,10 @@ def _record_self_target(target: ast.expr, names: set[str]) -> None:
             _record_self_target(elt, names)
 
 
-def detect_god_class(cls: ast.ClassDef) -> list[dict]:
+def detect_god_class(
+    cls: ast.ClassDef,
+    classes_in_file: "dict[str, ast.ClassDef] | None" = None,
+) -> list[dict]:
     """Return a list of god-class flag dicts (0 or 1 element).
 
     Returned dict shape: {tag, lineno, col_offset, detail}.

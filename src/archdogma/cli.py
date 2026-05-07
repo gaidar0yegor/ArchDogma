@@ -170,6 +170,159 @@ def _print_discovered_functions(discovered: list[DiscoveredFunction]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# scan — analyze a whole file or directory
+# ---------------------------------------------------------------------------
+
+
+@main.command(help="Scan a file or directory, probing every function and class.")
+@click.argument(
+    "path",
+    type=click.Path(exists=True, readable=True, path_type=Path),
+    default=Path("."),
+    required=False,
+)
+@click.option(
+    "--exclude",
+    "-e",
+    multiple=True,
+    metavar="PATTERN",
+    help=(
+        "Glob pattern (relative to scan root) to exclude. Repeatable. "
+        "Example: --exclude 'tests/**' --exclude '*_pb2.py'."
+    ),
+)
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["plain", "json"]),
+    default="plain",
+    show_default=True,
+    help="Output format.",
+)
+@click.option(
+    "--summary/--no-summary",
+    default=False,
+    help="Print only the summary line, not individual tag details.",
+)
+@click.option(
+    "--fail/--no-fail",
+    "fail_on_tags",
+    default=True,
+    show_default=True,
+    help="Exit non-zero when at least one tag is found (useful in CI).",
+)
+@click.pass_context
+def scan(
+    ctx: click.Context,
+    path: Path,
+    exclude: tuple[str, ...],
+    catalog_path: Path | None,
+    output_format: str,
+    summary: bool,
+    fail_on_tags: bool,
+) -> None:
+    """Scan a Python file or directory for Tier 1 tags.
+
+    Probes every function and class in every .py file found.
+    Skips __pycache__, .git, venv, dist, build and similar directories.
+    """
+    import json as _json
+
+    from archdogma.probe.scanner import scan_path
+
+    catalog = _try_load_catalog(catalog_path)
+    file_results = list(scan_path(path, catalog=catalog, excludes=exclude))
+
+    if not file_results:
+        click.echo("No Python files found.")
+        return
+
+    error_files = [r for r in file_results if r.parse_error is not None]
+    scanned_files = [r for r in file_results if r.parse_error is None]
+    total_items = sum(len(r.results) for r in scanned_files)
+    total_tags = sum(r.tag_count for r in scanned_files)
+    flagged_count = sum(1 for r in scanned_files if r.has_tags)
+
+    if output_format == "json":
+        data: dict = {
+            "scan_root": str(path),
+            "total_files": len(file_results),
+            "scanned_files": len(scanned_files),
+            "error_files": len(error_files),
+            "total_items": total_items,
+            "total_tags": total_tags,
+            "files": [],
+        }
+        for fr in file_results:
+            if fr.parse_error is not None:
+                data["files"].append(
+                    {"file": str(fr.file), "parse_error": fr.parse_error}
+                )
+                continue
+            flagged = [r for r in fr.results if r.tags]
+            if not flagged:
+                continue
+            data["files"].append(
+                {
+                    "file": str(fr.file),
+                    "items": [
+                        {
+                            "name": r.function_name,
+                            "line_start": r.line_start,
+                            "line_end": r.line_end,
+                            "tags": [
+                                {
+                                    "name": t.name,
+                                    "line": t.line,
+                                    "col": t.col,
+                                    "detail": t.detail,
+                                }
+                                for t in r.tags
+                            ],
+                        }
+                        for r in flagged
+                    ],
+                }
+            )
+        click.echo(_json.dumps(data, indent=2))
+    else:
+        if not summary:
+            for fr in file_results:
+                if fr.parse_error is not None:
+                    click.echo(
+                        f"PARSE ERROR  {fr.file}: {fr.parse_error}", err=True
+                    )
+                    continue
+                for result in fr.results:
+                    if not result.tags:
+                        continue
+                    click.echo(
+                        f"\n{fr.file}:{result.line_start}  {result.function_name}"
+                    )
+                    for tag in result.tags:
+                        click.echo(f"  [{tag.name}] line {tag.line}: {tag.detail}")
+        click.echo(
+            f"\nScanned {len(scanned_files)}/{len(file_results)} files"
+            f" · {total_items} items"
+            f" · {total_tags} tag(s) in {flagged_count} item(s)"
+        )
+        if error_files:
+            click.echo(
+                f"  {len(error_files)} file(s) could not be parsed.", err=True
+            )
+
+    if fail_on_tags and total_tags > 0:
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
 # dogmas — list catalog entries (from YAML per ADR-002)
 # ---------------------------------------------------------------------------
 
