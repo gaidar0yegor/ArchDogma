@@ -372,6 +372,62 @@ def dogmas(
 
 
 # ---------------------------------------------------------------------------
+# search — keyword search across dogma catalog
+# ---------------------------------------------------------------------------
+
+
+@main.command(help="Search the dogma catalog by keyword or tag name.")
+@click.argument("query")
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
+@click.pass_context
+def search(ctx: click.Context, query: str, catalog_path: Path | None) -> None:
+    """Search the dogma catalog by keyword or tag name."""
+    catalog = load_catalog(catalog_path)
+    q = query.lower()
+
+    found = []
+    for d in sorted(catalog.dogmas, key=lambda x: x.number):
+        raw = d.raw
+        searchable = " ".join(filter(None, [
+            d.title,
+            d.id,
+            " ".join(d.related_tags),
+            raw.get("definition") or "",
+            " ".join(raw.get("failure_conditions") or []),
+            " ".join(
+                item.get("summary", "") if isinstance(item, dict) else ""
+                for item in (raw.get("failure_cases") or [])
+                if isinstance(item, dict)
+            ),
+        ])).lower()
+        if q in searchable:
+            found.append(d)
+
+    if not found:
+        click.echo(f"No dogmas found matching '{query}'.")
+        return
+
+    for d in found:
+        raw = d.raw
+        marker = " 🎯" if d.v01_priority else ""
+        click.echo(f"§{d.number}. {d.title}{marker}  [{d.status}]")
+        if d.related_tags:
+            click.echo(f"  Tags: {', '.join(d.related_tags)}")
+        defn = raw.get("definition") or ""
+        if defn:
+            if len(defn) > 120:
+                defn = defn[:117] + "..."
+            click.echo(f"  {defn}")
+        click.echo()
+
+
+# ---------------------------------------------------------------------------
 # render-catalog — YAML → Markdown (ADR-002)
 # ---------------------------------------------------------------------------
 

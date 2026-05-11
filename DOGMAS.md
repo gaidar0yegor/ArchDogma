@@ -2,7 +2,7 @@
 
 # Dogma Catalog
 
-_Updated: 2026-04-30 — schema v1._
+_Updated: 2026-05-11 — schema v1._
 
 Catalog rules:
 
@@ -27,7 +27,7 @@ Catalog rules:
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Coverage gaming: tests that hit every line without asserting behavior (documented by Ned Batchelder, 2007)](https://nedbatchelder.com/blog/200710/flaws_in_coverage_measurement.html) — Ned Batchelder (author of coverage.py) documented the canonical failure mode: teams under 100% coverage mandates write tests that call every line without asserting the result. The coverage metric turns green. The code has bugs. The tests don't catch them because there are no assertions. This creates an illusion of safety that's worse than no coverage metric at all — the team believes they're protected when they aren't. The metric rewards code being called, not code being correct.
 
 **Success cases.**
 
@@ -76,7 +76,7 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [The enterprise FizzBuzz and DHH's rejection of mandatory layering for Rails apps](https://dhh.dk/2014/tdd-is-dead-long-live-testing.html) — DHH explicitly documented Basecamp's position: adding Clean Architecture layers (interfaces, adapters, use cases, domain models) to a Rails app before the domain is understood produces the wrong abstractions under a formal structure. The cost — mapping DTOs between layers, maintaining interface contracts that never change — exceeded any architectural benefit for a single-product team. The codebase became harder to navigate and slower to change. Basecamp's 'Majestic Monolith' approach (flat ActiveRecord, no adapter indirection) has served the product for 20+ years.
 
 **Success cases.**
 
@@ -123,7 +123,8 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [The Wrong Abstraction: shared code that accumulated 14 conditional flags (Sandi Metz, 2016)](https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction) — Sandi Metz documented a recurring real-world pattern: a shared utility function starts at 6 lines serving 2 callers. Over 3 years, 4 more callers are added, each needing a slight variation. Rather than duplicating, each team adds a flag parameter. The function reaches 23 lines with 7 conditional branches. Every new caller requires reading the whole function. Every change breaks 2+ existing callers. The abstraction cost more than the original duplication would have. Metz's rule: when faced with this, prefer duplication over the wrong abstraction.
+- QuackNet (Yegor Gaidar, 2025–2026): shared ProbeConfig accumulated 14 flags across 4 subsystems — QuackNet's network probe config was abstracted into a shared ProbeConfig class after seeing 2 similar structs. As the product expanded (Wi-Fi probes → cellular probes → Solana validator monitoring → ClickHouse ingestion), the shared config accumulated 14 boolean flags and 6 conditional branches. A Kafka pipeline change broke the Wi-Fi probe logic. Untangling the premature abstraction cost more dev-time than the original duplication would have. Split into 3 domain-specific structs: ProbeConfig, ValidatorConfig, IngestionConfig. First-party postmortem.
 
 **Success cases.**
 
@@ -174,7 +175,8 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Segment: 140+ microservices → single Go service "Centrifuge" (2022)](https://segment.com/blog/goodbye-microservices/) — Segment built 140+ individual microservices, one per data destination (Salesforce, Mixpanel, etc.). Each duplicated the same routing and retry logic. Debugging a single bad event required tracing through dozens of services; on-call engineers couldn't hold the system model in memory. The team rewrote everything as a single Go service with an internal plugin model. Ops burden dropped dramatically, delivery reliability improved, and the codebase became understandable again.
+- [Amazon Prime Video: serverless microservices → single process, 90% cost reduction (2023)](https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90) — Prime Video's audio/video monitoring was built as serverless microservices for elasticity. Data passed between steps via S3 — storage and retrieval costs became the dominant cost. Merging into a single process eliminated the S3 round-trips and cut infrastructure cost by 90%. Latency improved. The distributed architecture had solved a scaling problem that didn't exist at their actual volume.
 
 **Success cases.**
 
@@ -223,7 +225,7 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- Java EJB 2.x: 7+ files and 400 lines of boilerplate for a 5-line business rule (1999–2004) — Java 2 Enterprise Edition mandated EJBs for any server-side logic. A single 'User' entity required: Home interface, Local interface, Remote interface, Bean implementation class, and XML deployment descriptor — before writing any business logic. Deep inheritance from EJB base classes enforced by the spec. Rod Johnson documented this in 'Expert One-on-One J2EE Design and Development' (Wrox, 2002) as an industry-wide failure of interface/inheritance dogma. He built Spring Framework specifically to eliminate it. By 2004 Spring had wider adoption than the official J2EE spec; EJB 3.0 (2006) rewrote the spec to adopt Spring's approach.
 
 **Success cases.**
 
@@ -271,7 +273,7 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [DHH/Basecamp: over-mocked TDD test suite that passed but missed integration bugs (2014)](https://dhh.dk/2014/tdd-is-dead-long-live-testing.html) — Basecamp's codebase accumulated tests designed for TDD purity: controllers mocked to avoid touching the database, models mocked to avoid touching controllers, every class given an interface to enable injection. Tests ran fast and passed. Integration bugs multiplied — the mocked boundaries didn't match the real ones. DHH published 'TDD is Dead. Long live testing.' and the team moved to higher-level system tests that actually caught bugs. Lesson: test isolation can create a false safety signal when the mocks don't model the real integration points.
 
 **Success cases.**
 
@@ -556,6 +558,49 @@ _Break the dogma when:_
 
 **Main signal:** Every new edge case requires a workaround in the calling code. Your 'simple' core is pushing complexity outward — that's not KISS, that's a tax on every consumer.
 
+
+
+## §12. Every User Request is a Feature (Scope Creep)  \[draft\]
+
+**Definition.** Every user request gets implemented. Every interesting idea becomes a milestone. The product grows continuously.
+
+**Origin.** Early startup culture: 'we need to be everything to everyone'. Reinforced by agile backlogs with no pruning discipline.
+
+**Failure conditions.**
+
+- Product becomes too complex for any user to understand fully.
+- Core workflow gets slower as peripheral features add cognitive load.
+- Engineering velocity collapses as every new feature requires touching 12 other features for compatibility.
+- Team loses track of what the product actually is.
+- Initial user segment (who loved the focused product) churns as the product bloats.
+
+**Failure cases.**
+
+- QuackNet DePIN platform: Wi-Fi probe network → Solana + Kafka + ClickHouse + AI in 8 months — QuackNet started as a focused tool: crowdsource Wi-Fi quality data from mobile devices. Within 8 months it expanded to: Solana blockchain for token rewards, Kafka for real-time ingestion, ClickHouse for analytics, on-device AI for signal quality estimation, and a validator monitoring network. Each feature was individually interesting. The product lost its original focus. The core Wi-Fi probe — the thing users actually understood — became buried under protocol complexity. First-party postmortem.
+
+**Counter-dogmas.**
+
+- **Feature pruning** — _Jason Fried & DHH, 'Getting Real' (2006)_
+  > Half a product, not a half-assed product. Build half the features, but make them excellent. Prune aggressively — the product you ship to new users is the product they see first.
+- **Jobs To Be Done** — _Clayton Christensen, 'The Innovator's Dilemma' (1997); popularised by Bob Moesta_
+  > Users hire a product to do a specific job. When a product tries to do every job, it does none of them well. Define the primary job ruthlessly and protect it.
+
+**Honest verdict** \[draft_awaiting_cases\].
+
+_Follow the dogma when:_
+
+- The new feature serves the same user job as the core product.
+- The product is in early discovery and you genuinely don't know what the core job is yet.
+- You have evidence that the requested feature is the blocking reason users don't adopt.
+
+_Break the dogma when:_
+
+- The team is excited about the feature but can't name a user who asked for it.
+- The feature serves a different user segment than the current product.
+- Engineering time on the feature exceeds engineering time on the core product.
+- The feature requires explaining to new users before they can understand the product.
+
+**Main signal:** Your onboarding documentation gets longer with every release. New users need more context to understand the product than they did 6 months ago. That is not product growth — that is product obesity.
 
 
 ## Candidates

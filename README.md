@@ -4,12 +4,71 @@
   <img src="docs/assets/archdogma-badge.jpg" alt="ArchDogma badge" width="300">
 </div>
 
-> **Let me tell you a story.**
+> **A catalog of real engineering failures. The scanner is just a way to find them in your code.**
 
-Analyzes Python code — honestly, without made-up numbers.
-Shows sacred rules of programming — with real post-mortems, not horoscopes.
+---
 
-Two verifiable things. Not one beautiful one.
+## The Catalog
+
+Programming has sacred rules. "Always test." "Use microservices." "No copy-paste." "Clean Architecture." Nobody tells you **when these rules start strangling your system**.
+
+ArchDogma collects real postmortems — companies that followed a rule and paid for it. Not to say the rules are wrong. To say they have conditions.
+
+**Current catalog:** 12 dogmas, 11 with postmortems.
+
+Browse the full catalog: [DOGMAS.md](DOGMAS.md)
+
+Or from the CLI:
+
+```bash
+pip install archdogma
+
+# View all dogmas with their status and linked cases
+archdogma dogmas
+
+# Search for a specific pattern
+archdogma search "microservices"
+archdogma search "inheritance"
+archdogma search "coverage"
+```
+
+### Selected postmortems
+
+**Microservices for everything → Segment (2022)**
+140+ services, one per data destination. Routing logic duplicated 140 times. On-call couldn't hold the system in their head. Rewrote as one Go service. Delivery reliability improved.
+→ [full case](DOGMAS.md#4-microservices-for-everything-)
+
+**DRY → shared config with 14 flags (QuackNet, 2025)**
+ProbeConfig abstracted after 2 similar structs. Grew to 14 flags as 4 subsystems diverged. A Kafka change broke the Wi-Fi probe. Split back into 3 structs. The abstraction cost more than the duplication would have.
+→ [full case](DOGMAS.md#3-dry-dont-repeat-yourself-)
+
+**TDD → over-mocked suite that passed but missed integration bugs (Basecamp, 2014)**
+Tests mocked every boundary for unit purity. Integration bugs multiplied. DHH: "Test-driven development as ideology led to designing for tests instead of designing for the problem."
+→ [full case](DOGMAS.md#6-tdd-test-driven-development-)
+
+**OOP inheritance → 7 files for a 5-line business rule (Java EJB era, 2002)**
+EJB 2.x required Home + Local + Remote interfaces + XML for every entity. Rod Johnson documented it and built Spring to eliminate the inheritance tax.
+→ [full case](DOGMAS.md#5-oop-as-the-only-truth-inheritance-everywhere-)
+
+---
+
+## The Scanner
+
+Once you know which dogmas are in play, find them in your code:
+
+```bash
+# Probe one function — Trust Score, AST tags, linked dogmas
+archdogma probe mymodule.py -f MyClass.process
+
+# Scan a project — CI-ready
+archdogma scan src/
+archdogma scan src/ --fail   # exit 1 if any tag fires
+archdogma scan src/ --format json
+```
+
+The scanner detects 12 Tier 1 patterns — `deep-inheritance`, `god-class`, `magic-numbers`, `if-on-parameter`, `dynamic-magic`, `broad-except`, `mutable-default-arg`, `too-many-returns`, and more. Each tag links back to the catalog.
+
+**The scanner is secondary.** The catalog is the point. If the catalog didn't have real postmortems, the scanner would just be another linter. The postmortems are what make a detected pattern meaningful: "here's who followed this rule and where it broke them."
 
 ---
 
@@ -19,148 +78,61 @@ Two verifiable things. Not one beautiful one.
 pip install archdogma
 ```
 
-## Quick Start
-
-**Probe a single function** — get a Trust Score, AST tags, and linked dogmas:
+Or from source:
 
 ```bash
-archdogma probe mymodule.py -f MyClass.process
-```
-
-**Scan a whole project** — probe every function and class, CI-ready:
-
-```bash
-archdogma scan src/
-archdogma scan src/ --exclude 'tests/**' --format json
-archdogma scan src/ --fail   # exit 1 if any tag fires (default in CI)
-```
-
-**List the dogma catalog:**
-
-```bash
-archdogma dogmas
-```
-
-**Voice mode** — "Tell me the story" — for accessible audio output:
-
-```bash
-archdogma probe mymodule.py -f my_function --speak
+git clone https://github.com/gaidar0yegor/ArchDogma
+cd ArchDogma
+pip install -e .
 ```
 
 ---
 
 ## Why This Exists
 
-90% of the time you're not writing new code. You're trying to understand old code. Comments lie. Function names lie. Documentation was outdated before it was even finished. Running legacy code to understand how it works isn't understanding — it's Russian roulette.
+90% of engineering is understanding old code. And that code is full of dogmas applied without context. "Always test" — gamified into 100% coverage with no assertions. "Microservices" — applied to a 3-person team building one product. "Clean Architecture" — 5 layers for a CRUD app.
 
-And you keep running into dogmas. "Always write tests", "no copy-paste", "clean code above all", "OOP or you're not serious". Nobody tells you **when** these rules start strangling the system.
-
-ArchDogma takes on both problems.
+The pattern is predictable: a good rule gets applied without its conditions. Nobody wrote down when it stops working. The postmortems exist to fix that.
 
 ---
 
-## What It's Made Of
+## Honesty rules
 
-### Function Probe
-
-Analysis of one function. Verifiable.
-
-- What it actually does (not what the comments say)
-- What hidden assumptions are baked in
-- Where it's most likely to shoot you in the foot
-- Trust Score — how much you can rely on it
-
-Ground truth is verified here: AST, types, exceptions, actual execution. No "expert" numbers pulled from thin air.
-
-### Catalog of Dogmas
-
-A catalog of programming's sacred cows — with **real** post-mortems.
-
-Each dogma covers:
-- What it says
-- Under what conditions it starts to strangle
-- Real failure cases with links
-- An honest verdict
-
-If there's no link — it's marked `[NEED POSTMORTEMS]`. Making things up is not allowed (see [catalog rules](DOGMAS.md)).
-
-### How They Connect — A Concrete Example
-
-Function Probe finds 7 levels of inheritance in a function → tags it `deep-inheritance`.
-The Catalog for that tag returns: "Here are 2 real cases where `deep-inheritance` became a brain tumor: [link], [link]. Typical parameters: team > 10, code age > 3 years."
-
-Not an abstract "try to simplify". But: "here's who already slipped, here's what the fall looked like".
-
-In v0.2 the connection is implemented dumbly and honestly — via pattern-match on AST. No semantic magic. When pattern-match stops working, we'll honestly add something smarter.
+- Every postmortem has a source link, or is explicitly marked first-party / `source_url: null`.
+- Every claim can be challenged via the `honesty-bug` label on GitHub.
+- The scanner produces verifiable AST signals. No "expert" numbers without evidence.
+- If a detector doesn't exist yet, the catalog says so: `[NEED POSTMORTEMS]`.
 
 ---
 
-## What's Actually in v0.2.0 (Honest Scope)
+## Accessibility
 
-- **Function Probe** (`archdogma probe`) — AST analysis of one Python function: Trust Score, hidden assumptions, likely failure points. Verifiable signals only — no expert numbers from thin air
-- **Codebase Scan** (`archdogma scan`) — walks a file or directory, probes every function and class, supports `--format json` and `--fail` for CI integration
-- **12 Tier 1 detectors**, covering: `deep-inheritance`, `god-class`, `magic-numbers`, `if-on-parameter`, `dynamic-magic`, `broad-except`, `mutable-default-arg`, `too-many-returns`, and more — all with real AST evidence, no heuristics
-- **300 passing tests** — no magic, no mocks on the core analysis path
-- **3 fully filled dogmas** in the catalog with real post-mortem links:
-  1. **Microservices for everything** (Segment, Prime Video, and friends)
-  2. **TDD as law** (DHH, 2014)
-  3. **DRY / premature abstractions** (Sandi Metz)
-- The remaining dogmas are in the catalog as drafts (`[NEED POSTMORTEMS]`). We **don't hide** that the catalog is in its early stages. An honest "Draft" label is in the header
-- **Voice mode** (`--speak`) — "Tell me the story" — accessible audio from day one, not "later"
+Voice mode from day one:
 
-Realistic roadmap: god-class / deep-inheritance depth improvements, more filled dogmas, semantic probe wiring. Not 3 weeks, not a year.
-
----
-
-## What It Can't Do (And We Say So Upfront)
-
-- Does not predict when your team will burn out. We're not sociologists or fortune-tellers.
-- Does not simulate "physics" of dogmas via JEPA / world models. For now this can't be done honestly — ground truth can't be synthesized.
-- Does not analyze an entire repository in one shot. State space explosion is real; many people have already broken their heads on it.
-
-If at some point we start selling these three — beat us with sticks. That's a betrayal of the idea.
-
----
-
-## Accessibility Is Not a Feature
-
-We won't add it "later". We're building so that a sighted and a blind engineer get the **same** level of code understanding from day one.
-
-If a blind developer can't get the same truth about code as a sighted one — we built garbage.
-
----
-
-## Our Approach
-
-```
-Function  →  File  →  Module  →  Service
+```bash
+archdogma probe mymodule.py -f my_function --speak
 ```
 
-Each next level appears only after the previous one works honestly.
-
-**We don't trust comments.**
-**We don't trust names.**
-**We don't even trust ourselves.**
-**We verify.**
+Sighted and blind engineers get the same information. Not "later" — from the start.
 
 ---
 
-## How to Help
+## Contributing
 
-Open source. No money needed. It just needs to work honestly.
+**What we need most:** real postmortems. Which dogma was applied at your company, under what conditions, and what broke.
 
-- **Blind and low-vision engineers** — you're the primary reviewers of voice mode. Without you, everything else is just pretty arrows
-- **People scarred by dogmas** — send a post-mortem. Which dogma was strangling you, under what conditions. That's the fuel for the catalog
-- **Realism reviewers** — if you see a number or statement in the catalog without a link, open an issue with the `honesty-bug` label
+- **Post-mortem sources** — open an issue with `postmortem` label
+- **Blind/low-vision engineers** — primary reviewers of voice mode
+- **Honesty bugs** — if you see a claim without a source, open `honesty-bug`
 
-Issues and PRs — right here.
+Source of truth for the catalog: `catalog/dogmas.yaml`. `DOGMAS.md` is auto-generated via `archdogma render-catalog`.
 
 ---
 
 ## License
 
-MIT. Fork it, break it, improve it.
+MIT. Fork it, improve it.
 
-If your fork doesn't work by voice or outputs unverified "expert" numbers without links — **don't call it ArchDogma**.
+If your fork drops the honesty rules or voice mode — don't call it ArchDogma.
 
 🦫
