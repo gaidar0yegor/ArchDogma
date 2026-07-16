@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "archdogma"
-version = "0.2.0"
-description = "Honest analysis of one function at a time. Catalog of programming dogmas with real post-mortems."
+version = "0.2.1"
+description = "Honest static analysis for Python — catch circular imports, god modules, and tight coupling before they become postmortems. Every finding links to a real incident."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

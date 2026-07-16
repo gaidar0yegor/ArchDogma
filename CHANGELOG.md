@@ -7,6 +7,17 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-16
+
+### Changed
+- Package description rewritten to match what the tool actually does:
+  architecture smells (circular imports, god modules, tight coupling)
+  linked to real postmortems.
+
+### Fixed
+- `__version__` was stuck at 0.1.0 while the package shipped as 0.2.0 —
+  `archdogma --version` now reports the real version.
+
 ## [0.2.0] — 2026-05-07
 
 ### Added
