@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from archdogma.catalog.loader import load_catalog
 from archdogma.probe.scanner import scan_modules
 
@@ -115,9 +117,16 @@ def test_history_is_absent_outside_a_git_repo(tmp_path: Path) -> None:
 
 
 def test_history_metrics_travel_with_results_in_a_repo() -> None:
-    """Scanning ArchDogma itself must attach real commit counts."""
+    """Scanning ArchDogma itself must attach real commit counts.
+
+    Skipped rather than failed when the source tree has no usable history —
+    a tarball install or a `--depth 1` checkout. The skip message says which,
+    so a green run in that environment does not read as coverage of Tier 3.
+    CI checks out with fetch-depth: 0 so this actually runs there.
+    """
     result = scan_modules(Path("src"))
-    assert result.history is not None
+    if result.history is None:
+        pytest.skip("no git history here (tarball or shallow clone)")
     tier1 = next(m for m in result.modules if m.name == "archdogma.probe.tags.tier1")
     assert tier1.commits is not None and tier1.commits > 0
     assert tier1.author_count is not None and tier1.author_count >= 1

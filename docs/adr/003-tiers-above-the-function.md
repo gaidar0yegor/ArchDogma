@@ -85,6 +85,21 @@ Adding a tag here would be a guess wearing a tag name. The reason is written
 into `catalog/dogmas.yaml` so that the emptiness reads as a decision rather
 than as a backlog item.
 
+### Deviation from ADR-001
+
+ADR-001 listed `gitpython` as an optional dependency for Tier 3, with tags
+named `old-code` and `high-churn`. Neither survived contact:
+
+- **No gitpython.** One `git log --numstat` call through `subprocess` is the
+  whole integration. A library that wraps git would have added a dependency,
+  a version constraint and an import cost for a single command whose output
+  format we parse anyway. The `[git]` extra has been removed from
+  `pyproject.toml` — it installed a package nothing imports.
+- **Different tag names.** `old-code` describes the measurement; the finding
+  is the combination of age *and* afferent coupling, which is why the tag is
+  `load-bearing-wall`. `high-churn` became `churn-hotspot` for the same
+  reason — churn alone is not the signal, churn crossed with size is.
+
 ### Known limits, recorded rather than discovered later
 
 - Renames are not followed. `git log --follow` is per-path and would turn one

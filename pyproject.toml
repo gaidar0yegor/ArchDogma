@@ -46,9 +46,10 @@ Issues = "https://github.com/gaidar0yegor/ArchDogma/issues"
 Changelog = "https://github.com/gaidar0yegor/ArchDogma/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-git = [
-    "gitpython>=3.1",
-]
+# The `git` extra held gitpython, planned in ADR-001 for Tier 3. Tier 3
+# shipped in 0.3.0 using `subprocess` and one `git log` call, so the extra
+# installed a dependency nothing imports. Removed rather than left as a
+# no-op install — see ADR-003.
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.1",

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Tier 3 reads `git log`. The default shallow checkout would leave
+          # every file looking one commit old, so the history tests would
+          # skip and we would learn nothing about the tier that needs a
+          # repository most.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Catalog validates
+        run: archdogma validate-catalog
+
+      - name: DOGMAS.md is in sync with the YAML
+        # The markdown is generated (ADR-002). A PR that edits it by hand, or
+        # edits the YAML without regenerating, fails here.
+        run: |
+          archdogma render-catalog --output DOGMAS.md
+          git diff --exit-code -- DOGMAS.md
+
+      - name: Dogfood — the scanner runs on its own source
+        # --no-fail on purpose: this project does not exempt itself from its
+        # own detectors, and tier1.py is a known god-module. The step exists
+        # to catch a crash on a real tree, not to gate on findings.
+        run: |
+          archdogma scan src/ --no-fail --summary
+          archdogma modules src/ --no-fail
