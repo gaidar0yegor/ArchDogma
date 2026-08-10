@@ -58,6 +58,14 @@ class FileHistory:
         return len(self.authors)
 
 
+# A commit touching more files than this is treated as a sweep — a bulk
+# rename, a formatter run, a licence header change — and contributes no
+# co-change pairs. Without the cap, one `black .` couples every file in the
+# repository to every other, and the strongest "hidden relationships" in the
+# report are an artifact of a tool run.
+DEFAULT_MAX_FILES_PER_COMMIT = 30
+
+
 @dataclass(frozen=True)
 class RepoHistory:
     """Per-file history for a whole repository, plus the reference instant."""
@@ -66,6 +74,42 @@ class RepoHistory:
     as_of: int  # epoch of the newest commit — the "now" all ages are measured from
     files: dict[str, FileHistory] = field(default_factory=dict)
     follows_renames: bool = False
+    # Unordered pair of repo-relative .py paths → number of commits that
+    # touched both. Only pairs, only Python files, only from commits under
+    # the sweep cap.
+    co_changes: dict[tuple[str, str], int] = field(default_factory=dict)
+    # Adjacency view of the same data, built once at load. Scanning the pair
+    # dict per module would be O(modules x pairs), which on a large repo is
+    # the difference between a scan and a coffee break.
+    partner_index: dict[str, tuple[tuple[str, int], ...]] = field(
+        default_factory=dict, repr=False
+    )
+
+    def shared_commits(self, a: str, b: str) -> int:
+        """Commits that touched both files."""
+        return self.co_changes.get(_pair(a, b), 0)
+
+    def coupling_degree(self, a: str, b: str) -> float:
+        """Share of the rarer file's commits that also touched the other.
+
+        Normalised by `min` rather than by either file's own count, so the
+        number answers a question with a direction: of the times the file
+        that changes less often changed, how often did the other change too.
+        Dividing by the larger count would let a busy file dilute a real
+        relationship into a small number.
+        """
+        shared = self.shared_commits(a, b)
+        if not shared:
+            return 0.0
+        entry_a, entry_b = self.files.get(a), self.files.get(b)
+        if entry_a is None or entry_b is None:
+            return 0.0
+        floor = min(entry_a.commits, entry_b.commits)
+        return shared / floor if floor else 0.0
+
+    def partners(self, path: str) -> tuple[tuple[str, int], ...]:
+        """Files that changed alongside `path`, as (other_path, shared)."""
+        return self.partner_index.get(path, ())
 
     def for_path(self, path: Path) -> FileHistory | None:
         """Look up history by absolute or repo-relative path."""
@@ -152,12 +196,40 @@ def _parse_numstat_path(raw: str) -> str:
     return raw.split("=>", 1)[1].strip()
 
 
-def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
-    """Parse `git log --numstat` output into per-file history.
+def _pair(a: str, b: str) -> tuple[str, str]:
+    """Order-independent key for a pair of paths."""
+    return (a, b) if a <= b else (b, a)
 
-    Returns (files, as_of) where `as_of` is the newest commit timestamp seen.
-    Binary files (numstat writes `-` for both counts) contribute a commit but
-    no line counts.
+
+def _index_partners(
+    co_changes: dict[tuple[str, str], int],
+) -> dict[str, tuple[tuple[str, int], ...]]:
+    """Invert the pair map into per-path adjacency, strongest first."""
+    adjacency: dict[str, list[tuple[str, int]]] = {}
+    for (left, right), count in co_changes.items():
+        adjacency.setdefault(left, []).append((right, count))
+        adjacency.setdefault(right, []).append((left, count))
+    return {
+        path: tuple(sorted(items, key=lambda x: (-x[1], x[0])))
+        for path, items in adjacency.items()
+    }
+
+
+def parse_log(
+    output: str,
+    max_files_per_commit: int = DEFAULT_MAX_FILES_PER_COMMIT,
+) -> tuple[dict[str, FileHistory], int, dict[tuple[str, str], int]]:
+    """Parse `git log --numstat` output into per-file history and co-changes.
+
+    Returns (files, as_of, co_changes). `as_of` is the newest commit timestamp
+    seen. Binary files (numstat writes `-` for both counts) contribute a
+    commit but no line counts.
+
+    Co-change pairs are collected only from commits touching at most
+    `max_files_per_commit` files, and only between Python files. The cap keeps
+    a formatter sweep from coupling the whole repository; the `.py` filter
+    keeps the pair count bounded, and nothing downstream can ask about a file
+    that is not a module anyway.
     """
     commits: dict[str, int] = {}
     first: dict[str, int] = {}
@@ -165,6 +237,7 @@ def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
     authors: dict[str, set[str]] = {}
     added: dict[str, int] = {}
     deleted: dict[str, int] = {}
+    co_changes: dict[tuple[str, str], int] = {}
     newest = 0
 
     for record in output.split(_REC):
@@ -181,6 +254,7 @@ def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
         except ValueError:
             continue
         newest = max(newest, timestamp)
+        touched: list[str] = []
 
         for line in body.splitlines():
             if not line.strip():
@@ -193,6 +267,7 @@ def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
             if not path:
                 continue
 
+            touched.append(path)
             commits[path] = commits.get(path, 0) + 1
             authors.setdefault(path, set()).add(author)
             if path not in first or timestamp < first[path]:
@@ -203,6 +278,17 @@ def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
                 added[path] = added.get(path, 0) + int(add_raw)
             if del_raw != "-":
                 deleted[path] = deleted.get(path, 0) + int(del_raw)
+
+        # The cap counts every file in the commit, not just the Python ones:
+        # a 200-file rename that happens to move three modules is still a
+        # sweep, and the three should not be reported as related because of it.
+        if len(touched) > max_files_per_commit:
+            continue
+        modules_touched = sorted({p for p in touched if p.endswith(".py")})
+        for i, left in enumerate(modules_touched):
+            for right in modules_touched[i + 1 :]:
+                key = (left, right)
+                co_changes[key] = co_changes.get(key, 0) + 1
 
     files = {
         path: FileHistory(
@@ -216,7 +302,7 @@ def parse_log(output: str) -> tuple[dict[str, FileHistory], int]:
         )
         for path, count in commits.items()
     }
-    return files, newest
+    return files, newest, co_changes
 
 
 def load_history(path: Path, timeout: int = 120) -> RepoHistory | None:
@@ -239,7 +325,13 @@ def load_history(path: Path, timeout: int = 120) -> RepoHistory | None:
     except GitUnavailable:
         return None
 
-    files, as_of = parse_log(output)
+    files, as_of, co_changes = parse_log(output)
     if not files:
         return None
-    return RepoHistory(root=root, as_of=as_of, files=files)
+    return RepoHistory(
+        root=root,
+        as_of=as_of,
+        files=files,
+        co_changes=co_changes,
+        partner_index=_index_partners(co_changes),
+    )

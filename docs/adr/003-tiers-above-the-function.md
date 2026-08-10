@@ -85,6 +85,21 @@ Adding a tag here would be a guess wearing a tag name. The reason is written
 into `catalog/dogmas.yaml` so that the emptiness reads as a decision rather
 than as a backlog item.
 
+### Deviation from ADR-001
+
+ADR-001 listed `gitpython` as an optional dependency for Tier 3, with tags
+named `old-code` and `high-churn`. Neither survived contact:
+
+- **No gitpython.** One `git log --numstat` call through `subprocess` is the
+  whole integration. A library that wraps git would have added a dependency,
+  a version constraint and an import cost for a single command whose output
+  format we parse anyway. The `[git]` extra has been removed from
+  `pyproject.toml` — it installed a package nothing imports.
+- **Different tag names.** `old-code` describes the measurement; the finding
+  is the combination of age *and* afferent coupling, which is why the tag is
+  `load-bearing-wall`. `high-churn` became `churn-hotspot` for the same
+  reason — churn alone is not the signal, churn crossed with size is.
+
 ### Known limits, recorded rather than discovered later
 
 - Renames are not followed. `git log --follow` is per-path and would turn one
@@ -93,9 +108,14 @@ than as a backlog item.
 - Dynamic imports are invisible to the graph. A codebase using
   `importlib.import_module` looks less coupled than it is. Tier 1's
   `dynamic-magic` tag is the honest hint that the graph is incomplete there.
-- Temporal coupling — files that keep changing in the same commit with no
-  import between them — is the obvious next Tier 3 detector and is not
-  implemented.
+- Temporal coupling shipped after the first draft of this ADR. Two filters
+  carry it, and both are load-bearing rather than tuning: commits touching
+  more than 30 files contribute no pairs, or one formatter run couples the
+  entire repository and the strongest "hidden relationships" in the report
+  become an artifact of a tool run; and files under 5 revisions are excluded,
+  or two files sharing their only commit score a perfect 1.0. Pairs are also
+  restricted to `.py` files, which bounds the pair count and costs nothing —
+  nothing downstream can ask about a file that is not a module.
 
 ## Alternatives rejected
 

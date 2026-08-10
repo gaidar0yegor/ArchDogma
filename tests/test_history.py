@@ -42,13 +42,13 @@ def record(sha: str, ts: int, author: str, files: list[tuple[str, str, str]]) ->
 
 
 def test_parse_empty_output() -> None:
-    files, as_of = parse_log("")
+    files, as_of, _co = parse_log("")
     assert files == {}
     assert as_of == 0
 
 
 def test_parse_single_commit() -> None:
-    files, as_of = parse_log(record("abc", JAN_2020, "Ada", [("10", "2", "a.py")]))
+    files, as_of, _co = parse_log(record("abc", JAN_2020, "Ada", [("10", "2", "a.py")]))
     assert as_of == JAN_2020
     assert files["a.py"].commits == 1
     assert files["a.py"].lines_added == 10
@@ -60,7 +60,7 @@ def test_parse_accumulates_across_commits() -> None:
     log = record("a", JAN_2020, "Ada", [("10", "0", "a.py")]) + record(
         "b", JAN_2021, "Bob", [("5", "3", "a.py")]
     )
-    files, as_of = parse_log(log)
+    files, as_of, _co = parse_log(log)
     entry = files["a.py"]
     assert entry.commits == 2
     assert entry.lines_added == 15
@@ -75,34 +75,34 @@ def test_parse_as_of_is_the_newest_commit_regardless_of_order() -> None:
     log = record("new", JAN_2024, "Ada", [("1", "0", "a.py")]) + record(
         "old", JAN_2020, "Ada", [("1", "0", "a.py")]
     )
-    _files, as_of = parse_log(log)
+    _files, as_of, _co = parse_log(log)
     assert as_of == JAN_2024
 
 
 def test_parse_multiple_files_in_one_commit() -> None:
     log = record("a", JAN_2020, "Ada", [("1", "0", "a.py"), ("2", "0", "b.py")])
-    files, _ = parse_log(log)
+    files, _as_of, _co = parse_log(log)
     assert set(files) == {"a.py", "b.py"}
 
 
 def test_parse_binary_file_counts_commit_not_lines() -> None:
-    files, _ = parse_log(record("a", JAN_2020, "Ada", [("-", "-", "logo.png")]))
+    files, _as_of, _co = parse_log(record("a", JAN_2020, "Ada", [("-", "-", "logo.png")]))
     assert files["logo.png"].commits == 1
     assert files["logo.png"].lines_added == 0
 
 
 def test_parse_ignores_malformed_header() -> None:
-    files, _ = parse_log(f"{_REC}only-a-sha\n1\t0\ta.py")
+    files, _as_of, _co = parse_log(f"{_REC}only-a-sha\n1\t0\ta.py")
     assert files == {}
 
 
 def test_parse_ignores_non_integer_timestamp() -> None:
-    files, _ = parse_log(f"{_REC}abc\x02not-a-number\x02Ada\n1\t0\ta.py")
+    files, _as_of, _co = parse_log(f"{_REC}abc\x02not-a-number\x02Ada\n1\t0\ta.py")
     assert files == {}
 
 
 def test_parse_handles_path_with_spaces() -> None:
-    files, _ = parse_log(record("a", JAN_2020, "Ada", [("1", "0", "my dir/x.py")]))
+    files, _as_of, _co = parse_log(record("a", JAN_2020, "Ada", [("1", "0", "my dir/x.py")]))
     assert "my dir/x.py" in files
 
 

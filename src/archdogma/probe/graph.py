@@ -89,6 +89,10 @@ class ImportGraph:
     cycles: tuple[tuple[str, ...], ...] = ()
     ambiguous_names: tuple[str, ...] = ()
     parse_errors: dict[str, str] = field(default_factory=dict)
+    # Resolved absolute path → module name. Built once at construction so
+    # Tier 3, which speaks in repo-relative paths from git, can cross back
+    # into module names without an O(n) sweep per lookup.
+    by_path: dict[str, str] = field(default_factory=dict, repr=False)
 
     def afferent(self, name: str) -> int:
         """Ca — how many modules import this one."""
@@ -118,6 +122,22 @@ class ImportGraph:
             if name in cycle:
                 return cycle
         return None
+
+    def name_for_path(self, path: Path) -> str | None:
+        """Module name for a file path, or None if it is not in this graph."""
+        try:
+            return self.by_path.get(str(Path(path).resolve()))
+        except OSError:
+            return None
+
+    def imports_either_way(self, a: str, b: str) -> bool:
+        """True when either module imports the other.
+
+        Tier 3 uses this to subtract the coupling that is already visible in
+        the structure: two files that change together *and* import each other
+        are not a hidden relationship, they are a documented one.
+        """
+        return b in self.edges.get(a, ()) or a in self.edges.get(b, ())
 
 
 # ---------------------------------------------------------------------------
@@ -463,4 +483,5 @@ def build_graph(paths: list[Path]) -> ImportGraph:
         cycles=find_cycles(frozen_edges),
         ambiguous_names=ambiguous,
         parse_errors=parse_errors,
+        by_path={str(n.path.resolve()): name for name, n in modules.items()},
     )

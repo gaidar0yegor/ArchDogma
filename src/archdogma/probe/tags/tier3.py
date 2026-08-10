@@ -3,6 +3,7 @@
     - load-bearing-wall  ← implemented
     - churn-hotspot      ← implemented
     - single-author-hub  ← implemented
+    - temporal-coupling  ← implemented
 
 Tier 2 knows that forty modules import `core.py`. Tier 3 knows that nobody
 has changed `core.py` in three years. Neither fact is alarming alone; taken
@@ -13,9 +14,8 @@ that no one currently employed has ever modified.
 The method is Adam Tornhill's — behavioural code analysis, from *Your Code
 as a Crime Scene* (2015) and *Software Design X-Rays* (2018). What is
 implemented here is the cheap subset: change frequency and authorship
-crossed with the import graph. Tornhill's temporal coupling (files that
-keep changing in the same commit even with no import between them) is not
-here yet, and is the obvious next thing.
+crossed with the import graph, plus temporal coupling — files that keep
+changing in the same commit with no import between them.
 
 Detectors take `(name, graph, history)`. When `history` is None — no
 repository, a shallow clone, git unavailable — every Tier 3 detector
@@ -35,6 +35,10 @@ DEFAULT_HOTSPOT_PERCENTILE = 0.9
 DEFAULT_HOTSPOT_MIN_SLOC = 200
 DEFAULT_HOTSPOT_MIN_COMMITS = 5
 DEFAULT_BUS_FACTOR_AFFERENT = 5
+DEFAULT_COUPLING_DEGREE = 0.6
+DEFAULT_COUPLING_MIN_SHARED = 5
+DEFAULT_COUPLING_MIN_REVISIONS = 5
+DEFAULT_COUPLING_MAX_REPORTED = 3
 
 
 def _years(days: int) -> str:
@@ -208,6 +212,89 @@ def detect_single_author_hub(
 
 
 # ---------------------------------------------------------------------------
+# temporal-coupling
+# ---------------------------------------------------------------------------
+#
+# Two modules that keep changing in the same commit while neither imports the
+# other. The import graph says they are unrelated; four years of commits say
+# otherwise, and the commits are the ones describing what maintenance actually
+# costs.
+#
+# The import edge is subtracted on purpose. Files that change together *and*
+# import each other are coupled in a way the structure already declares —
+# that is a documented relationship, and reporting it would bury the signal
+# in the obvious. What is left is the coupling nobody wrote down: a parser and
+# the schema it assumes, a client and the server contract it mirrors, two
+# implementations of a rule that was never extracted.
+#
+# Both filters exist because the naive version is famously noisy: without a
+# sweep cap one formatter run couples the whole repository, and without a
+# minimum revision count two files sharing their only commit score a perfect
+# 1.0. See history.DEFAULT_MAX_FILES_PER_COMMIT for the first.
+
+
+def detect_temporal_coupling(
+    name: str,
+    graph: ImportGraph,
+    history: RepoHistory | None,
+    degree: float = DEFAULT_COUPLING_DEGREE,
+    min_shared: int = DEFAULT_COUPLING_MIN_SHARED,
+    min_revisions: int = DEFAULT_COUPLING_MIN_REVISIONS,
+    max_reported: int = DEFAULT_COUPLING_MAX_REPORTED,
+) -> list[Tag]:
+    """Flag modules that change together without importing each other."""
+    if history is None:
+        return []
+    node = graph.modules.get(name)
+    if node is None:
+        return []
+
+    own = history.for_path(node.path)
+    if own is None or own.commits < min_revisions:
+        return []
+
+    found: list[tuple[str, float, int]] = []
+    for other_path, shared in history.partners(own.path):
+        if shared < min_shared:
+            continue
+        other_entry = history.files.get(other_path)
+        if other_entry is None or other_entry.commits < min_revisions:
+            continue
+        deg = history.coupling_degree(own.path, other_path)
+        if deg < degree:
+            continue
+        other_name = graph.name_for_path(history.root / other_path)
+        if other_name is None or other_name == name:
+            continue
+        if graph.imports_either_way(name, other_name):
+            continue
+        found.append((other_name, deg, shared))
+
+    if not found:
+        return []
+
+    found.sort(key=lambda item: (-item[1], -item[2], item[0]))
+    shown = found[:max_reported]
+    listed = ", ".join(f"{n} ({d:.0%}, {s} commits)" for n, d, s in shown)
+    if len(found) > max_reported:
+        listed += f", +{len(found) - max_reported} more"
+
+    return [
+        Tag(
+            name="temporal-coupling",
+            detail=(
+                f"Changes together with {listed} — and there is no import "
+                f"between them. The structure says these files are unrelated; "
+                f"the commit history says maintaining one means maintaining "
+                f"the other."
+            ),
+            line=1,
+            col=0,
+        )
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 #
@@ -221,4 +308,5 @@ TIER3_DETECTORS: tuple[tuple[str, "object"], ...] = (
     ("load-bearing-wall", detect_load_bearing_wall),
     ("churn-hotspot", detect_churn_hotspot),
     ("single-author-hub", detect_single_author_hub),
+    ("temporal-coupling", detect_temporal_coupling),
 )

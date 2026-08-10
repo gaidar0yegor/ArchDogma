@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from archdogma.catalog.loader import load_catalog
 from archdogma.probe.scanner import scan_modules
@@ -115,9 +118,16 @@ def test_history_is_absent_outside_a_git_repo(tmp_path: Path) -> None:
 
 
 def test_history_metrics_travel_with_results_in_a_repo() -> None:
-    """Scanning ArchDogma itself must attach real commit counts."""
+    """Scanning ArchDogma itself must attach real commit counts.
+
+    Skipped rather than failed when the source tree has no usable history —
+    a tarball install or a `--depth 1` checkout. The skip message says which,
+    so a green run in that environment does not read as coverage of Tier 3.
+    CI checks out with fetch-depth: 0 so this actually runs there.
+    """
     result = scan_modules(Path("src"))
-    assert result.history is not None
+    if result.history is None:
+        pytest.skip("no git history here (tarball or shallow clone)")
     tier1 = next(m for m in result.modules if m.name == "archdogma.probe.tags.tier1")
     assert tier1.commits is not None and tier1.commits > 0
     assert tier1.author_count is not None and tier1.author_count >= 1
@@ -126,7 +136,12 @@ def test_history_metrics_travel_with_results_in_a_repo() -> None:
 def test_use_history_false_disables_tier3() -> None:
     result = scan_modules(Path("src"), use_history=False)
     assert result.history is None
-    tier3 = {"load-bearing-wall", "churn-hotspot", "single-author-hub"}
+    tier3 = {
+        "load-bearing-wall",
+        "churn-hotspot",
+        "single-author-hub",
+        "temporal-coupling",
+    }
     fired = {t.name for m in result.modules for t in m.tags}
     assert not (fired & tier3)
 
@@ -134,7 +149,12 @@ def test_use_history_false_disables_tier3() -> None:
 def test_tier3_catalog_links_resolve() -> None:
     """Every Tier 3 tag name must exist in the catalog's tag index."""
     catalog = load_catalog(Path("catalog/dogmas.yaml"))
-    for tag in ("load-bearing-wall", "churn-hotspot", "single-author-hub"):
+    for tag in (
+        "load-bearing-wall",
+        "churn-hotspot",
+        "single-author-hub",
+        "temporal-coupling",
+    ):
         assert tag in catalog.tag_index, f"{tag} is not linked to any catalog entry"
 
 
@@ -147,6 +167,78 @@ def test_tier2_catalog_links_resolve() -> None:
         "unstable-dependency",
     ):
         assert tag in catalog.tag_index, f"{tag} is not linked to any catalog entry"
+
+
+def test_temporal_coupling_end_to_end(tmp_path: Path) -> None:
+    """Two modules edited together six times, importing nothing of each other.
+
+    Built as a real repository rather than a fixture, because everything
+    between `git log` and the tag — numstat parsing, the sweep cap, the
+    path-to-module crossing — only exists on this path.
+    """
+    from tests.test_history import git
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(
+        ["git", "-C", str(root), "init", "-q", "-b", "main"],
+        check=True,
+        capture_output=True,
+    )
+    (root / "app").mkdir()
+    (root / "app" / "__init__.py").write_text("", encoding="utf-8")
+
+    for i in range(6):
+        (root / "app" / "parser.py").write_text(
+            f"FIELDS = {list(range(i + 1))}\n", encoding="utf-8"
+        )
+        (root / "app" / "schema.py").write_text(
+            f"COLUMNS = {list(range(i + 1))}\n", encoding="utf-8"
+        )
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", f"rev {i}", when=1700000000 + i * 86400)
+
+    result = scan_modules(root)
+    parser = next(m for m in result.modules if m.name == "app.parser")
+    tags = {t.name for t in parser.tags}
+    assert "temporal-coupling" in tags
+    detail = next(t for t in parser.tags if t.name == "temporal-coupling").detail
+    assert "app.schema" in detail
+    # And the graph agrees they are structurally unrelated.
+    assert result.graph.edges["app.parser"] == ()
+
+
+def test_temporal_coupling_ignores_a_sweep_commit(tmp_path: Path) -> None:
+    """A single commit touching everything must not couple everything."""
+    from tests.test_history import git
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(
+        ["git", "-C", str(root), "init", "-q", "-b", "main"],
+        check=True,
+        capture_output=True,
+    )
+    pkg = root / "app"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    for i in range(40):
+        (pkg / f"m{i}.py").write_text("x = 1\n", encoding="utf-8")
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "initial sweep", when=1700000000)
+
+    for rev in range(6):
+        for i in range(40):
+            (pkg / f"m{i}.py").write_text(f"x = {rev}\n", encoding="utf-8")
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", f"reformat {rev}", when=1700000000 + rev)
+
+    result = scan_modules(root)
+    assert result.history is not None
+    assert result.history.co_changes == {}
+    assert not any(
+        t.name == "temporal-coupling" for m in result.modules for t in m.tags
+    )
 
 
 def test_no_catalog_means_no_links(tmp_path: Path) -> None:
