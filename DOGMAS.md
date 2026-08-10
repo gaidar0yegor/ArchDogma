@@ -2,7 +2,7 @@
 
 # Dogma Catalog
 
-_Updated: 2026-05-11 — schema v1._
+_Updated: 2026-08-11 — schema v1._
 
 Catalog rules:
 
@@ -108,6 +108,7 @@ _Break the dogma when:_
 
 **Main signal:** You spend more time writing mappers between layers than writing business logic. The architecture is consuming the product.
 
+**Related tags:** `circular-import`, `unstable-dependency`.
 
 ## §3. DRY (Don't Repeat Yourself) 🎯  \[filled\]
 
@@ -158,7 +159,7 @@ _Break the dogma when:_
 
 **Main signal:** Every new requirement adds an if-flag to the 'shared' function. That's not extension — that's admission you glued two different things together.
 
-**Related tags:** `wrong-abstraction`.
+**Related tags:** `wrong-abstraction`, `hub-module`.
 
 ## §4. Microservices for Everything 🎯  \[filled\]
 
@@ -356,6 +357,7 @@ _Break the dogma when:_
 
 **Main signal:** Adding a new feature requires creating an interface, an implementation, a factory, and a registration entry — but there is only one implementation and there never will be a second.
 
+**Related tags:** `unstable-dependency`.
 
 ## §8. Self-documenting code (no comments needed)  \[draft\]
 
@@ -617,7 +619,7 @@ Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tes
 - [Knight Capital 2012 — $440M from dead code in legacy](https://www.sec.gov/litigation/admin/2013/34-70694.pdf)
 - Michael Feathers, «Working Effectively with Legacy Code» (2004)
 
-**Related tags:** `god-function`, `god-class`, `long-function`.
+**Related tags:** `god-function`, `god-class`, `god-module`, `long-function`.
 
 ### Long Parameter List  \[long-parameter-list\]
 
@@ -665,6 +667,51 @@ Classic code smell — when a signature demands too much, it can usually be spli
 
 ### Pair programming always  \[pair-programming-always\]
 
+
+### Circular Dependency Between Modules  \[circular-dependency\]
+
+Two or more modules that transitively import each other. Python often tolerates it at runtime, which is what makes it durable: the failure surfaces later, as an AttributeError on a half-initialised module when import order changes. The architectural reading is the more useful one — a cycle means the boundary between those modules is not real, whatever the directory layout claims. No postmortem yet; this is a candidate with sources, not a dogma with cases.
+
+**Sources.**
+
+- [Python FAQ — best practices for using import in a module (circular import failure modes)](https://docs.python.org/3/faq/programming.html#what-are-the-best-practices-for-using-import-in-a-module)
+- Robert C. Martin — Acyclic Dependencies Principle, «Granularity» (C++ Report, 1996)
+- pylint R0401 — cyclic-import
+
+**Related tags:** `circular-import`.
+
+### The Load-Bearing Wall — Code Nobody Dares Change  \[untouchable-legacy\]
+
+A module that many others depend on and that has not been modified in years. The reading is genuinely ambiguous, and the tag says so: the same two numbers describe a mature utility that stopped changing because it was finished, and a module the team routes around because changing it breaks forty importers. Feathers' framing is the useful one — the property that makes code legacy is not its age but the absence of a safe way to change it. No postmortem yet; candidate.
+
+**Sources.**
+
+- Michael Feathers, «Working Effectively with Legacy Code» (2004) — legacy defined by the absence of tests that make change safe
+- [Adam Tornhill, «Software Design X-Rays» (2018) — behavioural code analysis, change frequency crossed with structure](https://pragprog.com/titles/atevol/software-design-x-rays/)
+
+**Related tags:** `load-bearing-wall`.
+
+### Hotspot — Complexity Where the Code Actually Moves  \[change-hotspot\]
+
+Complexity only costs where the code changes. A large, gnarly module that nobody edits is a museum piece; the same module edited weekly is where defects and delivery drag accumulate. This is not a dogma anyone preaches — it is the correction to the dogma that all complexity is equally worth refactoring. Ranked by churn percentile within the repository, because an absolute commit count does not transfer between a two-month project and a ten-year one.
+
+**Sources.**
+
+- [Adam Tornhill, «Your Code as a Crime Scene» (2015/2024) — hotspots as the intersection of complexity and change frequency](https://pragprog.com/titles/atcrime2/your-code-as-a-crime-scene-second-edition/)
+- [Adam Tornhill, «Software Design X-Rays» (2018)](https://pragprog.com/titles/atevol/software-design-x-rays/)
+
+**Related tags:** `churn-hotspot`.
+
+### Bus Factor — One Person Holds a Shared Dependency  \[bus-factor\]
+
+A module many others import whose entire history has one author. The risk is not that the person leaves; it is that the knowledge needed to change the module safely was never written into the repository. Author identity comes from git's mailmap-resolved name, so inconsistent commit identities inflate diversity and shared bot accounts deflate it — the measure is of commit metadata, not of who actually understands the code.
+
+**Sources.**
+
+- [Avelino, Passos, Hora, Valente — «A Novel Approach for Estimating Truck Factors» (ICPC 2016)](https://arxiv.org/abs/1604.06766)
+- Michael Feathers, «Working Effectively with Legacy Code» (2004) — knowledge that lives outside the code
+
+**Related tags:** `single-author-hub`.
 
 ### Broad exception handling (bare except / except Exception)  \[broad-exception-handler\]
 

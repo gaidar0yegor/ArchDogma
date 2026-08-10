@@ -180,10 +180,15 @@ def find_function(tree: ast.Module, name: str) -> FuncNode | None:
     return None
 
 
-def _build_catalog_links(
+def build_catalog_links(
     tags: list[Tag], catalog: Catalog | None
 ) -> tuple[CatalogLink, ...]:
-    """Resolve catalog entries for each tag. Empty if no catalog or no match."""
+    """Resolve catalog entries for each tag. Empty if no catalog or no match.
+
+    Public because Tier 2 resolves links for module-level tags through the
+    same tag_index — the mapping is a property of the catalog, not of the
+    tier that produced the tag.
+    """
     if catalog is None:
         return ()
     links: list[CatalogLink] = []
@@ -234,7 +239,7 @@ def probe_function(
         line_start=func.lineno,
         line_end=func.end_lineno or func.lineno,
         tags=tuple(tags),
-        catalog_links=_build_catalog_links(tags, catalog),
+        catalog_links=build_catalog_links(tags, catalog),
     )
 
 
@@ -293,5 +298,5 @@ def probe_class(
         line_start=cls.lineno,
         line_end=cls.end_lineno or cls.lineno,
         tags=tuple(tags),
-        catalog_links=_build_catalog_links(tags, catalog),
+        catalog_links=build_catalog_links(tags, catalog),
     )

@@ -7,6 +7,62 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-11
+
+### Added
+- **Tier 2 — module-level analysis.** `probe/graph.py` builds an import graph
+  over a project: dotted names resolved through the package chain (so they
+  match what `import` would do regardless of scan root), afferent/efferent
+  coupling, instability `I = Ce / (Ca + Ce)`, and cycle detection via an
+  iterative Tarjan that survives graphs deeper than the recursion limit.
+  Detectors: `circular-import`, `hub-module`, `god-module`,
+  `unstable-dependency`.
+- **Tier 3 — change history.** `history.py` reads `git log --numstat` once and
+  crosses it with the import graph. Detectors: `load-bearing-wall` (many
+  dependents, no change in years), `churn-hotspot` (large and in the top churn
+  percentile of its repository), `single-author-hub` (many dependents, one
+  author). Ages are measured from the newest commit in the repository, not
+  wall-clock time, so the same commit always scores the same.
+- **`archdogma modules [PATH]`** — runs Tier 2 and Tier 3 over a project.
+  `--format plain|json`, `--history/--no-history`, `--all/--flagged-only`,
+  `--exclude PATTERN`, `--fail/--no-fail`.
+- New catalog candidates, all sources link-checked: `circular-dependency`,
+  `untouchable-legacy`, `change-hotspot`, `bus-factor`.
+- Catalog wiring for dogmas that previously had no detector at any tier:
+  `clean-architecture` → `circular-import`, `unstable-dependency`;
+  `dry` → `hub-module`; `solid` → `unstable-dependency`.
+
+### Changed
+- **JSON output now carries dogma context.** Each tag reports the ids of the
+  catalog entries that claim it, and a top-level `catalog` block emits those
+  entries once with `break_when`, `main_signal` and source links. Applies to
+  both `scan` and `modules`. Previously `scan --format json` dropped catalog
+  links entirely, which made the machine-readable output indistinguishable
+  from any linter's.
+- Payload serialisation moved out of `cli.py` into `report.py`.
+- Package description again — see Fixed.
+
+### Fixed
+- `scan --format json` and `modules --format json` keep stdout parseable when
+  no catalog is found. The "no catalog" note goes to stderr, where it was
+  always meant to go.
+- **Honesty bug in our own shopfront.** The 0.2.1 description advertised
+  "circular imports, god modules, and tight coupling" when no detector in
+  `probe/` touched imports, modules or coupling. The CHANGELOG entry below
+  repeats the same claim. Both were wrong at the time of writing; as of this
+  release the detectors exist and the description is true. Left visible
+  rather than rewritten — a catalog of other people's unsourced claims does
+  not get to quietly edit its own.
+
+### Known limits
+- `microservices` still has no detector, deliberately. Its failure lives in
+  deployment topology and shared databases; a Python import graph cannot see
+  it, and the reason is now written into the catalog.
+- Tier 3 does not follow renames — a file renamed last month looks one month
+  old. Merge commits are excluded; formatter commits count as changes.
+- `god-module` fires on `archdogma.probe.tags.tier1` in our own source. Left
+  standing and asserted in a test.
+
 ## [0.2.1] - 2026-07-16
 
 ### Changed

@@ -18,6 +18,7 @@ from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
 from archdogma.catalog.renderer import render_catalog
 from archdogma.catalog.validator import has_errors, validate_catalog
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
+from archdogma.report import catalog_payload, history_payload, tags_payload
 from archdogma.probe.walker import (
     DiscoveredFunction,
     ProbeResult,
@@ -277,20 +278,13 @@ def scan(
                             "name": r.function_name,
                             "line_start": r.line_start,
                             "line_end": r.line_end,
-                            "tags": [
-                                {
-                                    "name": t.name,
-                                    "line": t.line,
-                                    "col": t.col,
-                                    "detail": t.detail,
-                                }
-                                for t in r.tags
-                            ],
+                            "tags": tags_payload(r.tags, r.catalog_links),
                         }
                         for r in flagged
                     ],
                 }
             )
+        data["catalog"] = catalog_payload(data["files"], catalog)
         click.echo(_json.dumps(data, indent=2))
     else:
         if not summary:
@@ -319,6 +313,167 @@ def scan(
             )
 
     if fail_on_tags and total_tags > 0:
+        sys.exit(1)
+
+
+@main.command(
+    help="Analyse module structure — import graph, coupling, and git history."
+)
+@click.argument(
+    "path",
+    type=click.Path(exists=True, readable=True, path_type=Path),
+    default=Path("."),
+    required=False,
+)
+@click.option(
+    "--exclude",
+    "-e",
+    multiple=True,
+    metavar="PATTERN",
+    help="Glob pattern (relative to scan root) to exclude. Repeatable.",
+)
+@click.option(
+    "--catalog",
+    "catalog_path",
+    type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path),
+    default=None,
+    help="Path to catalog/dogmas.yaml. Auto-detected from cwd if omitted.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["plain", "json"]),
+    default="plain",
+    show_default=True,
+    help="Output format.",
+)
+@click.option(
+    "--history/--no-history",
+    "use_history",
+    default=True,
+    show_default=True,
+    help="Use git history for Tier 3 tags. Off gives a working-tree-only result.",
+)
+@click.option(
+    "--all/--flagged-only",
+    "show_all",
+    default=False,
+    show_default=True,
+    help="Print every module with its metrics, not only the flagged ones.",
+)
+@click.option(
+    "--fail/--no-fail",
+    "fail_on_tags",
+    default=True,
+    show_default=True,
+    help="Exit non-zero when at least one tag is found (useful in CI).",
+)
+@click.pass_context
+def modules(
+    ctx: click.Context,
+    path: Path,
+    exclude: tuple[str, ...],
+    catalog_path: Path | None,
+    output_format: str,
+    use_history: bool,
+    show_all: bool,
+    fail_on_tags: bool,
+) -> None:
+    """Run the Tier 2 and Tier 3 detectors over a project.
+
+    Tier 2 is the import graph: cycles, coupling, module size. Tier 3 crosses
+    that with `git log`: what is depended upon and never changed, what churns
+    hardest, what has one author. Outside a git work tree Tier 3 is silent
+    and the output says so.
+    """
+    import json as _json
+
+    from archdogma.probe.scanner import scan_modules
+
+    catalog = _try_load_catalog(catalog_path)
+    result = scan_modules(
+        path, catalog=catalog, excludes=exclude, use_history=use_history
+    )
+
+    if not result.modules:
+        click.echo("No Python files found.")
+        return
+
+    graph = result.graph
+    edge_count = sum(len(t) for t in graph.edges.values())
+
+    if output_format == "json":
+        shown = result.modules if show_all else result.flagged
+        data: dict = {
+            "scan_root": str(path),
+            "total_modules": len(result.modules),
+            "total_edges": edge_count,
+            "total_tags": result.tag_count,
+            "cycles": [list(c) for c in graph.cycles],
+            "history": history_payload(result),
+            "modules": [
+                {
+                    "name": m.name,
+                    "file": str(m.file),
+                    "sloc": m.sloc,
+                    "def_count": m.def_count,
+                    "afferent": m.afferent,
+                    "efferent": m.efferent,
+                    "instability": round(m.instability, 3),
+                    "commits": m.commits,
+                    "days_since_change": m.days_since_change,
+                    "author_count": m.author_count,
+                    "tags": tags_payload(m.tags, m.catalog_links),
+                }
+                for m in shown
+            ],
+        }
+        if graph.ambiguous_names:
+            data["ambiguous_module_names"] = list(graph.ambiguous_names)
+        if graph.parse_errors:
+            data["parse_errors"] = graph.parse_errors
+        data["catalog"] = catalog_payload(data["modules"], catalog)
+        click.echo(_json.dumps(data, indent=2))
+    else:
+        for m in result.modules if show_all else result.flagged:
+            click.echo(f"\n{m.file}  {m.name}")
+            click.echo(
+                f"  Ca={m.afferent} Ce={m.efferent} I={m.instability:.2f}"
+                f" · {m.sloc} SLOC · {m.def_count} defs"
+                + (
+                    f" · {m.commits} commits · last change {m.days_since_change}d ago"
+                    if m.commits is not None
+                    else ""
+                )
+            )
+            for tag in m.tags:
+                click.echo(f"  [{tag.name}] line {tag.line}: {tag.detail}")
+
+        click.echo(
+            f"\n{len(result.modules)} modules · {edge_count} internal imports"
+            f" · {len(graph.cycles)} cycle(s)"
+            f" · {result.tag_count} tag(s) in {len(result.flagged)} module(s)"
+        )
+        if result.history is None:
+            click.echo(
+                "  Tier 3 skipped: no usable git history "
+                "(not a work tree, shallow clone, or git unavailable).",
+                err=True,
+            )
+        if graph.ambiguous_names:
+            click.echo(
+                f"  {len(graph.ambiguous_names)} ambiguous module name(s) "
+                f"produced no edges: {', '.join(graph.ambiguous_names[:5])}",
+                err=True,
+            )
+        if graph.parse_errors:
+            click.echo(
+                f"  {len(graph.parse_errors)} file(s) could not be parsed "
+                f"and contribute no edges.",
+                err=True,
+            )
+
+    if fail_on_tags and result.tag_count > 0:
         sys.exit(1)
 
 
