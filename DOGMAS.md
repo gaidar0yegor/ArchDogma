@@ -2,7 +2,7 @@
 
 # Dogma Catalog
 
-_Updated: 2026-05-11 — schema v1._
+_Updated: 2026-08-11 — schema v1._
 
 Catalog rules:
 
@@ -108,6 +108,7 @@ _Break the dogma when:_
 
 **Main signal:** You spend more time writing mappers between layers than writing business logic. The architecture is consuming the product.
 
+**Related tags:** `circular-import`, `unstable-dependency`.
 
 ## §3. DRY (Don't Repeat Yourself) 🎯  \[filled\]
 
@@ -158,7 +159,7 @@ _Break the dogma when:_
 
 **Main signal:** Every new requirement adds an if-flag to the 'shared' function. That's not extension — that's admission you glued two different things together.
 
-**Related tags:** `wrong-abstraction`.
+**Related tags:** `wrong-abstraction`, `hub-module`.
 
 ## §4. Microservices for Everything 🎯  \[filled\]
 
@@ -356,6 +357,7 @@ _Break the dogma when:_
 
 **Main signal:** Adding a new feature requires creating an interface, an implementation, a factory, and a registration entry — but there is only one implementation and there never will be a second.
 
+**Related tags:** `unstable-dependency`.
 
 ## §8. Self-documenting code (no comments needed)  \[draft\]
 
@@ -617,7 +619,7 @@ Anti-pattern consequence, not a dogma. Appears from fear of refactoring + no tes
 - [Knight Capital 2012 — $440M from dead code in legacy](https://www.sec.gov/litigation/admin/2013/34-70694.pdf)
 - Michael Feathers, «Working Effectively with Legacy Code» (2004)
 
-**Related tags:** `god-function`, `god-class`, `long-function`.
+**Related tags:** `god-function`, `god-class`, `god-module`, `long-function`.
 
 ### Long Parameter List  \[long-parameter-list\]
 
@@ -665,6 +667,18 @@ Classic code smell — when a signature demands too much, it can usually be spli
 
 ### Pair programming always  \[pair-programming-always\]
 
+
+### Circular Dependency Between Modules  \[circular-dependency\]
+
+Two or more modules that transitively import each other. Python often tolerates it at runtime, which is what makes it durable: the failure surfaces later, as an AttributeError on a half-initialised module when import order changes. The architectural reading is the more useful one — a cycle means the boundary between those modules is not real, whatever the directory layout claims. No postmortem yet; this is a candidate with sources, not a dogma with cases.
+
+**Sources.**
+
+- [Python FAQ — best practices for using import in a module (circular import failure modes)](https://docs.python.org/3/faq/programming.html#what-are-the-best-practices-for-using-import-in-a-module)
+- Robert C. Martin — Acyclic Dependencies Principle, «Granularity» (C++ Report, 1996)
+- pylint R0401 — cyclic-import
+
+**Related tags:** `circular-import`.
 
 ### Broad exception handling (bare except / except Exception)  \[broad-exception-handler\]
 

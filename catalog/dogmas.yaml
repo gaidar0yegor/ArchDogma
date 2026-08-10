@@ -8,11 +8,16 @@
 # Rules:
 #   - every counter_dogma must have attribution (validator — in alpha3)
 #   - related_tags — names of Tier 1/2/... detectors that map to this dogma
-#   - empty related_tags means: "dogma doesn't exist at function level"
-#     (DRY/Microservices — not detectable from a single function, that's honest)
+#   - empty related_tags means: "no detector can honestly claim this dogma
+#     at any tier we ship". Microservices is the standing example — the
+#     failure lives in deployment topology and shared databases, which no
+#     amount of Python source will reveal. Keeping it empty is the feature.
+#   - a tag on a dogma is a pointer to look, never a verdict. hub-module on
+#     DRY finds the shape of the QuackNet case; it does not prove that any
+#     particular hub is a wrong abstraction.
 
 schema_version: 1
-updated: 2026-05-11
+updated: 2026-08-11
 
 dogmas:
 
@@ -128,7 +133,14 @@ dogmas:
         - "Your problem is ops complexity, not domain complexity."
       main_signal: "You spend more time writing mappers between layers than writing business logic. The architecture is consuming the product."
 
-    related_tags: []  # file/module-level concern, not detectable from a single function
+    related_tags:
+      # Tier 2 made the module level visible, and this is the dogma that
+      # lives there. "Dependencies point inward" is a claim about the import
+      # graph; a cycle is that claim being false, and a stable module reaching
+      # into a volatile one is the direction of dependency inverted in fact
+      # while the folder names still say otherwise.
+      - circular-import
+      - unstable-dependency
 
   # -------------------------------------------------------------------------
   # 3. DRY — v0.1 priority, filled
@@ -200,6 +212,12 @@ dogmas:
 
     related_tags:
       - wrong-abstraction  # future Tier 5 — detect via divergent call-sites + if-on-parameter inside shared fn
+      # The QuackNet case in this entry is a hub: ProbeConfig was extracted
+      # once and then imported by every diverging subsystem, which is what
+      # made a Kafka change reach the Wi-Fi probe. hub-module finds that
+      # shape. It does not prove the abstraction is wrong — a legitimate
+      # core is also a hub — so this is a pointer to look, not a verdict.
+      - hub-module
 
   # -------------------------------------------------------------------------
   # 4. Microservices — v0.1 priority, filled
@@ -268,7 +286,13 @@ dogmas:
         - "The main pain is in business logic complexity, not scale."
       main_signal: "Distributed monolith — a bunch of small services that still change together and deploy together, but now over the network."
 
-    related_tags: []  # system level, not detectable from a single function
+    # Still empty after Tier 2, deliberately. Tier 2 sees one repository's
+    # import graph. The failure in the Segment case — services sharing a
+    # database, routing logic duplicated across deployment units — is not
+    # visible in imports at all. Detecting it would need infrastructure
+    # topology, not Python source. Anything we shipped here would be a guess
+    # wearing a tag name.
+    related_tags: []
 
   # -------------------------------------------------------------------------
   # 5. OOP as the only truth — stub
@@ -432,7 +456,13 @@ dogmas:
         - "Checklist-driven reviews: SOLID as a gate for merges degrades into cargo-culting."
       main_signal: "Adding a new feature requires creating an interface, an implementation, a factory, and a registration entry — but there is only one implementation and there never will be a second."
 
-    related_tags: []  # SOLID is at class/module level; not detectable from single function AST
+    related_tags:
+      # Caveat kept explicit: the Stable Dependencies Principle is not one of
+      # the five SOLID letters. It is from the same author and shipped in the
+      # same package-principles material, and it is the part of that material
+      # that is mechanically checkable. Linking it here is a partial map, not
+      # a claim that this tag detects "SOLID violations".
+      - unstable-dependency
 
   # -------------------------------------------------------------------------
   # 8. Self-documenting code — stub
@@ -718,6 +748,7 @@ candidates:
     related_tags:
       - god-function  # pending (alpha2/alpha3)
       - god-class     # pending (alpha3+, needs class probe)
+      - god-module    # Tier 2 — the "God File" half of this entry's title
       - long-function
 
   - id: long-parameter-list
@@ -755,6 +786,26 @@ candidates:
     title: "Monorepo vs polyrepo"
   - id: pair-programming-always
     title: "Pair programming always"
+
+  - id: circular-dependency
+    title: "Circular Dependency Between Modules"
+    note: >-
+      Two or more modules that transitively import each other. Python often
+      tolerates it at runtime, which is what makes it durable: the failure
+      surfaces later, as an AttributeError on a half-initialised module when
+      import order changes. The architectural reading is the more useful one —
+      a cycle means the boundary between those modules is not real, whatever
+      the directory layout claims. No postmortem yet; this is a candidate with
+      sources, not a dogma with cases.
+    sources:
+      - title: "Python FAQ — best practices for using import in a module (circular import failure modes)"
+        url: "https://docs.python.org/3/faq/programming.html#what-are-the-best-practices-for-using-import-in-a-module"
+      - title: "Robert C. Martin — Acyclic Dependencies Principle, «Granularity» (C++ Report, 1996)"
+        url: null
+      - title: "pylint R0401 — cyclic-import"
+        url: null
+    related_tags:
+      - circular-import
 
   - id: broad-exception-handler
     title: "Broad exception handling (bare except / except Exception)"
