@@ -8,6 +8,22 @@ breaking changes are allowed in any release before `0.1.0`.
 ## [Unreleased]
 
 ### Added
+- **Nine sourced failure cases across four dogmas** — `solid`,
+  `premature-optimization`, `functional-purity` and `kiss` move from
+  `need_postmortems` to `filled`. Every source URL was fetched and verified
+  against the claims this session (two are bot-blocked to scripts — ACM
+  Queue, Medium — and additionally verified via archive captures; the entry
+  says so). Highlights: Dan North's shadow-codebases account and Seemann's
+  "interfaces are not abstractions" for SOLID; Joe Duffy (PLINQ) and Nelson
+  Elhage (Sorbet vs Flow) for premature optimization; Discord's mutable Rust
+  NIF, Culture Amp's Elm retirement and Twitter Lite's 200ms keypress for
+  functional purity; GFS's single master and Go's generics reversal for KISS.
+- Two cases researched and REJECTED are recorded as YAML comments so the next
+  researcher does not re-tread them: Therac-25 under KISS (documented motive
+  was expense plus faith in software, not a simplicity doctrine) and
+  Debian/OpenSSL under self-documenting-code (third-party analysis, no
+  no-comments policy in evidence). `self-documenting-code` stays
+  `need_postmortems` — an honest empty beats a stretched fit.
 - **`temporal-coupling` (Tier 3).** Modules that keep changing in the same
   commit while neither imports the other. The import edge is subtracted on
   purpose — coupling the structure already declares is documented, not hidden.
