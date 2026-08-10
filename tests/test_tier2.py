@@ -28,10 +28,12 @@ def graph_from_edges(
     sloc = sloc or {}
     defs = defs or {}
     names = set(edges) | {t for targets in edges.values() for t in targets}
+    # Rooted at /repo so paths line up with the RepoHistory fixture in
+    # test_tier3, which is what lets Tier 3 cross a git path back to a module.
     modules = {
         name: ModuleNode(
             name=name,
-            path=Path(f"{name.replace('.', '/')}.py"),
+            path=Path("/repo") / f"{name.replace('.', '/')}.py",
             sloc=sloc.get(name, 10),
             def_count=defs.get(name, 1),
         )
@@ -48,6 +50,7 @@ def graph_from_edges(
         reverse={k: tuple(sorted(v)) for k, v in reverse.items()},
         external={k: () for k in names},
         cycles=find_cycles(full_edges),
+        by_path={str(n.path): name for name, n in modules.items()},
     )
 
 

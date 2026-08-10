@@ -702,6 +702,17 @@ Complexity only costs where the code changes. A large, gnarly module that nobody
 
 **Related tags:** `churn-hotspot`.
 
+### Logical Coupling — Files That Change Together Without Knowing It  \[logical-coupling\]
+
+Two modules that keep appearing in the same commit while neither imports the other. The structure says they are unrelated; the commit history says maintaining one means maintaining the other. Typical causes are a parser and the schema it assumes, a client and the server contract it mirrors, or two implementations of one rule that was never extracted. The import edge is deliberately subtracted: coupling the structure already declares is documented, not hidden. Naive versions of this measure are famously noisy, so a commit touching many files contributes no pairs and files with very few revisions are excluded. No postmortem yet; candidate.
+
+**Sources.**
+
+- Gall, Hajek, Jazayeri — «Detection of Logical Coupling Based on Product Release History» (ICSM 1998), the original formulation
+- [Adam Tornhill, «Software Design X-Rays» (2018) — temporal coupling, and why sweeping commits must be filtered out](https://pragprog.com/titles/atevol/software-design-x-rays/)
+
+**Related tags:** `temporal-coupling`.
+
 ### Bus Factor — One Person Holds a Shared Dependency  \[bus-factor\]
 
 A module many others import whose entire history has one author. The risk is not that the person leaves; it is that the knowledge needed to change the module safely was never written into the repository. Author identity comes from git's mailmap-resolved name, so inconsistent commit identities inflate diversity and shared bot accounts deflate it — the measure is of commit metadata, not of who actually understands the code.

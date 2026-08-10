@@ -843,6 +843,26 @@ candidates:
     related_tags:
       - churn-hotspot
 
+  - id: logical-coupling
+    title: "Logical Coupling — Files That Change Together Without Knowing It"
+    note: >-
+      Two modules that keep appearing in the same commit while neither imports
+      the other. The structure says they are unrelated; the commit history says
+      maintaining one means maintaining the other. Typical causes are a parser
+      and the schema it assumes, a client and the server contract it mirrors,
+      or two implementations of one rule that was never extracted. The import
+      edge is deliberately subtracted: coupling the structure already declares
+      is documented, not hidden. Naive versions of this measure are famously
+      noisy, so a commit touching many files contributes no pairs and files
+      with very few revisions are excluded. No postmortem yet; candidate.
+    sources:
+      - title: "Gall, Hajek, Jazayeri — «Detection of Logical Coupling Based on Product Release History» (ICSM 1998), the original formulation"
+        url: null
+      - title: "Adam Tornhill, «Software Design X-Rays» (2018) — temporal coupling, and why sweeping commits must be filtered out"
+        url: "https://pragprog.com/titles/atevol/software-design-x-rays/"
+    related_tags:
+      - temporal-coupling
+
   - id: bus-factor
     title: "Bus Factor — One Person Holds a Shared Dependency"
     note: >-

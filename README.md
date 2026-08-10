@@ -14,7 +14,7 @@ Programming has sacred rules. "Always test." "Use microservices." "No copy-paste
 
 ArchDogma collects real postmortems — companies that followed a rule and paid for it. Not to say the rules are wrong. To say they have conditions.
 
-**Current catalog:** 12 dogmas (11 with postmortems) and 21 candidates.
+**Current catalog:** 12 dogmas (11 with postmortems) and 22 candidates.
 
 Browse the full catalog: [DOGMAS.md](DOGMAS.md)
 
@@ -77,7 +77,7 @@ archdogma modules src/ --all --no-history
 
 **Tier 2 — the import graph.** `circular-import`, `hub-module`, `god-module`, `unstable-dependency`. Questions that do not exist inside a single file: what does everything depend on, and do the dependencies point where the folder names claim they do.
 
-**Tier 3 — structure crossed with `git log`.** `load-bearing-wall`, `churn-hotspot`, `single-author-hub`. Tier 2 knows that forty modules import `core.py`; Tier 3 knows nobody has changed it in three years. Neither fact is alarming alone.
+**Tier 3 — structure crossed with `git log`.** `load-bearing-wall`, `churn-hotspot`, `single-author-hub`, `temporal-coupling`. Tier 2 knows that forty modules import `core.py`; Tier 3 knows nobody has changed it in three years. Neither fact is alarming alone. And `temporal-coupling` finds the pairs that keep changing together while neither imports the other — the relationship no graph can show you.
 
 Tier 3 needs a git work tree. Outside one — a shallow clone, a tarball, no git — every Tier 3 detector goes silent and says so. A missing history is not evidence of a young file.
 

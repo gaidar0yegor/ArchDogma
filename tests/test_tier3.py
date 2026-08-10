@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from archdogma.history import FileHistory, RepoHistory
+from archdogma.history import FileHistory, RepoHistory, _index_partners, _pair
 from archdogma.probe.tags.tier3 import (
     TIER3_DETECTORS,
     detect_churn_hotspot,
     detect_load_bearing_wall,
     detect_single_author_hub,
+    detect_temporal_coupling,
 )
 
 from tests.test_tier2 import fan_in, graph_from_edges, tag_names
@@ -18,18 +19,24 @@ NOW = 1704067200  # 2024-01-01, the reference instant for every age here
 DAY = 86400
 
 
+def _path_of(module: str) -> str:
+    return f"{module.replace('.', '/')}.py"
+
+
 def history(
     entries: dict[str, tuple[int, int, tuple[str, ...]]],
     as_of: int = NOW,
+    co_changes: dict[tuple[str, str], int] | None = None,
 ) -> RepoHistory:
     """Build a RepoHistory from {module: (commits, days_ago, authors)}.
 
     Paths mirror what `graph_from_edges` produces, so the two fixtures line
-    up without either knowing about the other.
+    up without either knowing about the other. `co_changes` is keyed by
+    module name pairs and translated to paths here.
     """
     files = {}
     for module, (commits, days_ago, authors) in entries.items():
-        path = f"{module.replace('.', '/')}.py"
+        path = _path_of(module)
         last = as_of - days_ago * DAY
         files[path] = FileHistory(
             path=path,
@@ -38,7 +45,17 @@ def history(
             last_commit=last,
             authors=frozenset(authors),
         )
-    return RepoHistory(root=Path("/repo"), as_of=as_of, files=files)
+    pairs = {
+        _pair(_path_of(a), _path_of(b)): n
+        for (a, b), n in (co_changes or {}).items()
+    }
+    return RepoHistory(
+        root=Path("/repo"),
+        as_of=as_of,
+        files=files,
+        co_changes=pairs,
+        partner_index=_index_partners(pairs),
+    )
 
 
 def quiet_history(modules: list[str], commits: int = 1) -> RepoHistory:
@@ -51,11 +68,12 @@ def quiet_history(modules: list[str], commits: int = 1) -> RepoHistory:
 # ---------------------------------------------------------------------------
 
 
-def test_all_three_detectors_registered() -> None:
+def test_all_detectors_registered() -> None:
     assert [name for name, _ in TIER3_DETECTORS] == [
         "load-bearing-wall",
         "churn-hotspot",
         "single-author-hub",
+        "temporal-coupling",
     ]
 
 
@@ -226,3 +244,100 @@ def test_a_module_can_be_wall_and_single_author_at_once() -> None:
     for _name, detector in TIER3_DETECTORS:
         fired.extend(tag_names(detector("core", graph, hist)))
     assert set(fired) == {"load-bearing-wall", "single-author-hub"}
+
+
+# ---------------------------------------------------------------------------
+# temporal-coupling
+# ---------------------------------------------------------------------------
+
+
+def _coupled(edges=None, shared=8, commits=10):
+    """Two modules changing together, with edges under the caller's control."""
+    graph = graph_from_edges(edges if edges is not None else {"a": (), "b": ()})
+    hist = history(
+        {"a": (commits, 5, ("Ada",)), "b": (commits, 5, ("Ada",))},
+        co_changes={("a", "b"): shared},
+    )
+    return graph, hist
+
+
+def test_co_changing_unrelated_modules_flag() -> None:
+    graph, hist = _coupled()
+    tags = detect_temporal_coupling("a", graph, hist)
+    assert tag_names(tags) == ["temporal-coupling"]
+    assert "b" in tags[0].detail
+
+
+def test_both_ends_of_the_pair_are_flagged() -> None:
+    graph, hist = _coupled()
+    assert detect_temporal_coupling("b", graph, hist) != []
+
+
+def test_import_edge_suppresses_the_tag() -> None:
+    """Coupling the structure already declares is not a hidden relationship."""
+    graph, hist = _coupled(edges={"a": ("b",), "b": ()})
+    assert detect_temporal_coupling("a", graph, hist) == []
+    assert detect_temporal_coupling("b", graph, hist) == []
+
+
+def test_reverse_import_edge_also_suppresses() -> None:
+    graph, hist = _coupled(edges={"a": (), "b": ("a",)})
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_low_degree_does_not_flag() -> None:
+    graph, hist = _coupled(shared=3, commits=20)
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_few_shared_commits_does_not_flag() -> None:
+    """A perfect degree over two commits is not evidence of anything."""
+    graph, hist = _coupled(shared=2, commits=2)
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_min_revisions_floor_suppresses_young_files() -> None:
+    graph, hist = _coupled(shared=4, commits=4)
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_no_co_changes_no_tag() -> None:
+    graph = graph_from_edges({"a": (), "b": ()})
+    hist = history({"a": (10, 5, ("Ada",)), "b": (10, 5, ("Ada",))})
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_partner_outside_the_graph_is_ignored() -> None:
+    """A co-changing file that was not scanned cannot be named as a module."""
+    graph = graph_from_edges({"a": ()})
+    hist = history(
+        {"a": (10, 5, ("Ada",)), "b": (10, 5, ("Ada",))},
+        co_changes={("a", "b"): 8},
+    )
+    assert detect_temporal_coupling("a", graph, hist) == []
+
+
+def test_thresholds_are_configurable() -> None:
+    graph, hist = _coupled(shared=3, commits=20)
+    assert detect_temporal_coupling("a", graph, hist) == []
+    assert (
+        detect_temporal_coupling("a", graph, hist, degree=0.1, min_shared=3) != []
+    )
+
+
+def test_partners_are_capped_and_the_remainder_counted() -> None:
+    names = ["a", *[f"p{i}" for i in range(5)]]
+    graph = graph_from_edges({n: () for n in names})
+    hist = history(
+        {n: (10, 5, ("Ada",)) for n in names},
+        co_changes={("a", f"p{i}"): 8 for i in range(5)},
+    )
+    detail = detect_temporal_coupling("a", graph, hist)[0].detail
+    assert "+2 more" in detail
+
+
+def test_detail_reports_degree_and_shared_count() -> None:
+    graph, hist = _coupled(shared=8, commits=10)
+    detail = detect_temporal_coupling("a", graph, hist)[0].detail
+    assert "80%" in detail
+    assert "8 commits" in detail

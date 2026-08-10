@@ -108,9 +108,14 @@ named `old-code` and `high-churn`. Neither survived contact:
 - Dynamic imports are invisible to the graph. A codebase using
   `importlib.import_module` looks less coupled than it is. Tier 1's
   `dynamic-magic` tag is the honest hint that the graph is incomplete there.
-- Temporal coupling — files that keep changing in the same commit with no
-  import between them — is the obvious next Tier 3 detector and is not
-  implemented.
+- Temporal coupling shipped after the first draft of this ADR. Two filters
+  carry it, and both are load-bearing rather than tuning: commits touching
+  more than 30 files contribute no pairs, or one formatter run couples the
+  entire repository and the strongest "hidden relationships" in the report
+  become an artifact of a tool run; and files under 5 revisions are excluded,
+  or two files sharing their only commit score a perfect 1.0. Pairs are also
+  restricted to `.py` files, which bounds the pair count and costs nothing —
+  nothing downstream can ask about a file that is not a module.
 
 ## Alternatives rejected
 

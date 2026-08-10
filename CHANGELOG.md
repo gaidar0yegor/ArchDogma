@@ -7,6 +7,29 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+- **`temporal-coupling` (Tier 3).** Modules that keep changing in the same
+  commit while neither imports the other. The import edge is subtracted on
+  purpose — coupling the structure already declares is documented, not hidden.
+  Commits touching more than 30 files contribute no pairs, so a formatter run
+  cannot couple the whole repository; files with fewer than 5 revisions are
+  excluded, so two files sharing their only commit cannot score 1.0.
+- New catalog candidate `logical-coupling` (Gall et al., ICSM 1998; Tornhill).
+- **CI.** `ci.yml` runs pytest on 3.11/3.12/3.13, validates the catalog,
+  asserts `DOGMAS.md` is in sync with its YAML source, and runs both scanners
+  over `src/`. Checkout uses `fetch-depth: 0` — a shallow clone would leave
+  every file one commit old and silently skip the Tier 3 tests.
+
+### Changed
+- `parse_log` returns `(files, as_of, co_changes)`; `RepoHistory` carries
+  `co_changes` and a prebuilt `partner_index`. `ImportGraph` gained `by_path`
+  and `imports_either_way` so Tier 3 can cross a git path back to a module in
+  constant time.
+
+### Removed
+- The `[git]` extra. ADR-001 planned gitpython for Tier 3; Tier 3 shipped
+  using `subprocess`, so the extra installed a package nothing imports.
+
 ## [0.3.0] - 2026-08-11
 
 ### Added
