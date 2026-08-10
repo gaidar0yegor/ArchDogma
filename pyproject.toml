@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "archdogma"
 version = "0.2.1"
-description = "Honest static analysis for Python — catch circular imports, god modules, and tight coupling before they become postmortems. Every finding links to a real incident."
+description = "Honest static analysis for Python — 12 function- and class-level AST detectors, each linked to a catalogued postmortem. The catalog is the point; the scanner finds it in your code."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
