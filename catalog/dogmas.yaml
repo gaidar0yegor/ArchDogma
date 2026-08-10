@@ -807,6 +807,59 @@ candidates:
     related_tags:
       - circular-import
 
+  - id: untouchable-legacy
+    title: "The Load-Bearing Wall — Code Nobody Dares Change"
+    note: >-
+      A module that many others depend on and that has not been modified in
+      years. The reading is genuinely ambiguous, and the tag says so: the
+      same two numbers describe a mature utility that stopped changing
+      because it was finished, and a module the team routes around because
+      changing it breaks forty importers. Feathers' framing is the useful
+      one — the property that makes code legacy is not its age but the
+      absence of a safe way to change it. No postmortem yet; candidate.
+    sources:
+      - title: "Michael Feathers, «Working Effectively with Legacy Code» (2004) — legacy defined by the absence of tests that make change safe"
+        url: null
+      - title: "Adam Tornhill, «Software Design X-Rays» (2018) — behavioural code analysis, change frequency crossed with structure"
+        url: "https://pragprog.com/titles/atevol/software-design-x-rays/"
+    related_tags:
+      - load-bearing-wall
+
+  - id: change-hotspot
+    title: "Hotspot — Complexity Where the Code Actually Moves"
+    note: >-
+      Complexity only costs where the code changes. A large, gnarly module
+      that nobody edits is a museum piece; the same module edited weekly is
+      where defects and delivery drag accumulate. This is not a dogma anyone
+      preaches — it is the correction to the dogma that all complexity is
+      equally worth refactoring. Ranked by churn percentile within the
+      repository, because an absolute commit count does not transfer between
+      a two-month project and a ten-year one.
+    sources:
+      - title: "Adam Tornhill, «Your Code as a Crime Scene» (2015/2024) — hotspots as the intersection of complexity and change frequency"
+        url: "https://pragprog.com/titles/atcrime2/your-code-as-a-crime-scene-second-edition/"
+      - title: "Adam Tornhill, «Software Design X-Rays» (2018)"
+        url: "https://pragprog.com/titles/atevol/software-design-x-rays/"
+    related_tags:
+      - churn-hotspot
+
+  - id: bus-factor
+    title: "Bus Factor — One Person Holds a Shared Dependency"
+    note: >-
+      A module many others import whose entire history has one author. The
+      risk is not that the person leaves; it is that the knowledge needed to
+      change the module safely was never written into the repository. Author
+      identity comes from git's mailmap-resolved name, so inconsistent commit
+      identities inflate diversity and shared bot accounts deflate it — the
+      measure is of commit metadata, not of who actually understands the code.
+    sources:
+      - title: "Avelino, Passos, Hora, Valente — «A Novel Approach for Estimating Truck Factors» (ICPC 2016)"
+        url: "https://arxiv.org/abs/1604.06766"
+      - title: "Michael Feathers, «Working Effectively with Legacy Code» (2004) — knowledge that lives outside the code"
+        url: null
+    related_tags:
+      - single-author-hub
+
   - id: broad-exception-handler
     title: "Broad exception handling (bare except / except Exception)"
     note: "Swallowing unexpected exceptions hides bugs. Specific handlers communicate intent and preserve error information."

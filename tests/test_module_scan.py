@@ -107,6 +107,48 @@ def test_catalog_links_resolve_for_module_tags(tmp_path: Path) -> None:
     assert "circular-import" in linked_tags
 
 
+def test_history_is_absent_outside_a_git_repo(tmp_path: Path) -> None:
+    write_pkg(tmp_path, {"app/a.py": ""})
+    result = scan_modules(tmp_path)
+    assert result.history is None
+    assert all(m.commits is None for m in result.modules)
+
+
+def test_history_metrics_travel_with_results_in_a_repo() -> None:
+    """Scanning ArchDogma itself must attach real commit counts."""
+    result = scan_modules(Path("src"))
+    assert result.history is not None
+    tier1 = next(m for m in result.modules if m.name == "archdogma.probe.tags.tier1")
+    assert tier1.commits is not None and tier1.commits > 0
+    assert tier1.author_count is not None and tier1.author_count >= 1
+
+
+def test_use_history_false_disables_tier3() -> None:
+    result = scan_modules(Path("src"), use_history=False)
+    assert result.history is None
+    tier3 = {"load-bearing-wall", "churn-hotspot", "single-author-hub"}
+    fired = {t.name for m in result.modules for t in m.tags}
+    assert not (fired & tier3)
+
+
+def test_tier3_catalog_links_resolve() -> None:
+    """Every Tier 3 tag name must exist in the catalog's tag index."""
+    catalog = load_catalog(Path("catalog/dogmas.yaml"))
+    for tag in ("load-bearing-wall", "churn-hotspot", "single-author-hub"):
+        assert tag in catalog.tag_index, f"{tag} is not linked to any catalog entry"
+
+
+def test_tier2_catalog_links_resolve() -> None:
+    catalog = load_catalog(Path("catalog/dogmas.yaml"))
+    for tag in (
+        "circular-import",
+        "hub-module",
+        "god-module",
+        "unstable-dependency",
+    ):
+        assert tag in catalog.tag_index, f"{tag} is not linked to any catalog entry"
+
+
 def test_no_catalog_means_no_links(tmp_path: Path) -> None:
     write_pkg(
         tmp_path,

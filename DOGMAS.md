@@ -680,6 +680,39 @@ Two or more modules that transitively import each other. Python often tolerates 
 
 **Related tags:** `circular-import`.
 
+### The Load-Bearing Wall — Code Nobody Dares Change  \[untouchable-legacy\]
+
+A module that many others depend on and that has not been modified in years. The reading is genuinely ambiguous, and the tag says so: the same two numbers describe a mature utility that stopped changing because it was finished, and a module the team routes around because changing it breaks forty importers. Feathers' framing is the useful one — the property that makes code legacy is not its age but the absence of a safe way to change it. No postmortem yet; candidate.
+
+**Sources.**
+
+- Michael Feathers, «Working Effectively with Legacy Code» (2004) — legacy defined by the absence of tests that make change safe
+- [Adam Tornhill, «Software Design X-Rays» (2018) — behavioural code analysis, change frequency crossed with structure](https://pragprog.com/titles/atevol/software-design-x-rays/)
+
+**Related tags:** `load-bearing-wall`.
+
+### Hotspot — Complexity Where the Code Actually Moves  \[change-hotspot\]
+
+Complexity only costs where the code changes. A large, gnarly module that nobody edits is a museum piece; the same module edited weekly is where defects and delivery drag accumulate. This is not a dogma anyone preaches — it is the correction to the dogma that all complexity is equally worth refactoring. Ranked by churn percentile within the repository, because an absolute commit count does not transfer between a two-month project and a ten-year one.
+
+**Sources.**
+
+- [Adam Tornhill, «Your Code as a Crime Scene» (2015/2024) — hotspots as the intersection of complexity and change frequency](https://pragprog.com/titles/atcrime2/your-code-as-a-crime-scene-second-edition/)
+- [Adam Tornhill, «Software Design X-Rays» (2018)](https://pragprog.com/titles/atevol/software-design-x-rays/)
+
+**Related tags:** `churn-hotspot`.
+
+### Bus Factor — One Person Holds a Shared Dependency  \[bus-factor\]
+
+A module many others import whose entire history has one author. The risk is not that the person leaves; it is that the knowledge needed to change the module safely was never written into the repository. Author identity comes from git's mailmap-resolved name, so inconsistent commit identities inflate diversity and shared bot accounts deflate it — the measure is of commit metadata, not of who actually understands the code.
+
+**Sources.**
+
+- [Avelino, Passos, Hora, Valente — «A Novel Approach for Estimating Truck Factors» (ICPC 2016)](https://arxiv.org/abs/1604.06766)
+- Michael Feathers, «Working Effectively with Legacy Code» (2004) — knowledge that lives outside the code
+
+**Related tags:** `single-author-hub`.
+
 ### Broad exception handling (bare except / except Exception)  \[broad-exception-handler\]
 
 Swallowing unexpected exceptions hides bugs. Specific handlers communicate intent and preserve error information.

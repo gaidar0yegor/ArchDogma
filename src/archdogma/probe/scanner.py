@@ -6,9 +6,11 @@ from pathlib import Path
 from typing import Iterator
 
 from archdogma.catalog.loader import Catalog
+from archdogma.history import RepoHistory, load_history
 from archdogma.probe.graph import ImportGraph, build_graph
 from archdogma.probe.tags.tier1 import Tag
 from archdogma.probe.tags.tier2 import TIER2_DETECTORS
+from archdogma.probe.tags.tier3 import TIER3_DETECTORS
 from archdogma.probe.walker import (
     CatalogLink,
     ProbeResult,
@@ -136,15 +138,24 @@ class ModuleResult:
     instability: float
     tags: tuple[Tag, ...] = field(default_factory=tuple)
     catalog_links: tuple[CatalogLink, ...] = field(default_factory=tuple)
+    # Tier 3 — None when no git history was available for this file.
+    commits: int | None = None
+    days_since_change: int | None = None
+    author_count: int | None = None
 
 
 @dataclass(frozen=True)
 class ModuleScanResult:
-    """Whole-project Tier 2 result: the graph plus per-module findings."""
+    """Whole-project module result: the graph, the history, and the findings.
+
+    `history` is None when the scan ran outside a git work tree. Callers are
+    expected to say so rather than present Tier 3 silence as a clean bill.
+    """
 
     root: Path
     graph: ImportGraph
     modules: tuple[ModuleResult, ...]
+    history: RepoHistory | None = None
 
     @property
     def tag_count(self) -> int:
@@ -159,14 +170,20 @@ def scan_modules(
     root: Path,
     catalog: Catalog | None = None,
     excludes: tuple[str, ...] = (),
+    use_history: bool = True,
 ) -> ModuleScanResult:
-    """Build the import graph under `root` and run every Tier 2 detector.
+    """Build the import graph under `root`, then run Tier 2 and Tier 3.
 
-    One pass: the graph is built once and shared by all detectors, because
-    every Tier 2 question is a question about the same structure.
+    One pass over the tree and one `git log` call: the graph and the history
+    are each built once and shared by every detector, because every question
+    at these tiers is a question about the same two structures.
+
+    `use_history=False` forces Tier 3 off — useful when a caller wants a
+    result that depends only on the working tree.
     """
     paths = list(collect_python_files(root, excludes))
     graph = build_graph(paths)
+    history = load_history(root) if use_history else None
 
     results: list[ModuleResult] = []
     for name in sorted(graph.modules):
@@ -174,6 +191,10 @@ def scan_modules(
         tags: list[Tag] = []
         for _tag_name, detector in TIER2_DETECTORS:
             tags.extend(detector(name, graph))  # type: ignore[operator]
+        for _tag_name, detector in TIER3_DETECTORS:
+            tags.extend(detector(name, graph, history))  # type: ignore[operator]
+
+        entry = history.for_path(node.path) if history else None
         results.append(
             ModuleResult(
                 name=name,
@@ -185,7 +206,14 @@ def scan_modules(
                 instability=graph.instability(name),
                 tags=tuple(tags),
                 catalog_links=build_catalog_links(tags, catalog),
+                commits=entry.commits if entry else None,
+                days_since_change=(
+                    history.days_since_change(node.path) if history else None
+                ),
+                author_count=entry.author_count if entry else None,
             )
         )
 
-    return ModuleScanResult(root=root, graph=graph, modules=tuple(results))
+    return ModuleScanResult(
+        root=root, graph=graph, modules=tuple(results), history=history
+    )
