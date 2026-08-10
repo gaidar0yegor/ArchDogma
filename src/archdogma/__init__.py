@@ -4,4 +4,4 @@ See README.md for philosophy, DOGMAS.md for the catalog,
 AST_TAGS_DRAFT.md for the tag vocabulary.
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"

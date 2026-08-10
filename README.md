@@ -14,7 +14,7 @@ Programming has sacred rules. "Always test." "Use microservices." "No copy-paste
 
 ArchDogma collects real postmortems — companies that followed a rule and paid for it. Not to say the rules are wrong. To say they have conditions.
 
-**Current catalog:** 12 dogmas, 11 with postmortems.
+**Current catalog:** 12 dogmas (11 with postmortems) and 21 candidates.
 
 Browse the full catalog: [DOGMAS.md](DOGMAS.md)
 
@@ -60,15 +60,52 @@ Once you know which dogmas are in play, find them in your code:
 # Probe one function — Trust Score, AST tags, linked dogmas
 archdogma probe mymodule.py -f MyClass.process
 
-# Scan a project — CI-ready
+# Scan functions and classes — CI-ready
 archdogma scan src/
 archdogma scan src/ --fail   # exit 1 if any tag fires
-archdogma scan src/ --format json
+
+# Analyse module structure and change history
+archdogma modules src/
+archdogma modules src/ --all --no-history
 ```
 
-The scanner detects 12 Tier 1 patterns — `deep-inheritance`, `god-class`, `magic-numbers`, `if-on-parameter`, `dynamic-magic`, `broad-except`, `mutable-default-arg`, `too-many-returns`, and more. Each tag links back to the catalog.
-
 **The scanner is secondary.** The catalog is the point. If the catalog didn't have real postmortems, the scanner would just be another linter. The postmortems are what make a detected pattern meaningful: "here's who followed this rule and where it broke them."
+
+### Three tiers, three kinds of question
+
+**Tier 1 — one function or class.** `deep-nesting`, `long-function`, `god-function`, `too-many-params`, `if-on-parameter`, `magic-numbers`, `dynamic-magic`, `broad-except`, `mutable-default-arg`, `too-many-returns`, `god-class`, `deep-inheritance`.
+
+**Tier 2 — the import graph.** `circular-import`, `hub-module`, `god-module`, `unstable-dependency`. Questions that do not exist inside a single file: what does everything depend on, and do the dependencies point where the folder names claim they do.
+
+**Tier 3 — structure crossed with `git log`.** `load-bearing-wall`, `churn-hotspot`, `single-author-hub`. Tier 2 knows that forty modules import `core.py`; Tier 3 knows nobody has changed it in three years. Neither fact is alarming alone.
+
+Tier 3 needs a git work tree. Outside one — a shallow clone, a tarball, no git — every Tier 3 detector goes silent and says so. A missing history is not evidence of a young file.
+
+### For agents and CI
+
+`--format json` is the machine-readable surface, and it carries the catalog with it:
+
+```bash
+archdogma modules src/ --format json
+```
+
+Every tag reports the ids of the catalog entries that claim it. Those entries are emitted once at the top level with `break_when`, `main_signal`, and links to the postmortems:
+
+```json
+{
+  "tags": [{"name": "circular-import", "dogmas": ["clean-architecture"]}],
+  "catalog": {
+    "entries": {
+      "clean-architecture": {
+        "break_when": ["Team smaller than 5 and single product — ..."],
+        "main_signal": "You spend more time writing mappers between layers ..."
+      }
+    }
+  }
+}
+```
+
+That is the difference between a linter and this: `god-module at line 1` is no more useful than `C0301 line too long`. A tag with the conditions under which its dogma stops working is something you can argue with.
 
 ---
 

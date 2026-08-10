@@ -17,6 +17,20 @@ def test_version_is_set() -> None:
     assert isinstance(__version__, str)
 
 
+def test_version_matches_pyproject() -> None:
+    """Drift between the two version strings shipped a wrong --version once."""
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    if not pyproject.exists():  # installed without the source tree
+        return
+    declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
+    assert declared == __version__
+
+
 def test_cli_version_flag() -> None:
     runner = CliRunner()
     result = runner.invoke(main, ["--version"])

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "archdogma"
-version = "0.2.1"
-description = "Honest static analysis for Python — 12 function- and class-level AST detectors, each linked to a catalogued postmortem. The catalog is the point; the scanner finds it in your code."
+version = "0.3.0"
+description = "Honest static analysis for Python — function, module and git-history detectors, each linked to a catalogued postmortem. The catalog is the point; the scanner finds it in your code."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
