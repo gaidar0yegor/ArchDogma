@@ -7,6 +7,19 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+- **`archdogma contracts`** — architecture contracts (forbidden / layers /
+  independence, import-linter semantics, credited) checked against the
+  import graph, with every violation priced by the importing file's git
+  history: commits, age, churn percentile. `--fail-only-active` gates the
+  exit code on violations in recently-changed files while still REPORTING
+  dormant ones — it never hides findings, and without usable history every
+  violation counts as active (unknown is not dormant). Config in
+  `[tool.archdogma.contracts]` via stdlib tomllib — still two dependencies.
+  Malformed contracts are fatal, never skipped: a contract that silently
+  fails to parse is a gate that silently opened. Our own contracts are
+  declared in this repo's pyproject and checked in CI.
+
 ### Fixed
 - **Pre-launch audit of the v0.1-era catalog entries** — the ones that
   predate the verification pipeline and had never been through it. Found by

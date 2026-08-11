@@ -18,6 +18,7 @@ from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
 from archdogma.catalog.renderer import render_catalog
 from archdogma.catalog.validator import has_errors, validate_catalog
 from archdogma.agent import mcp_command
+from archdogma.contracts import contracts_command
 from archdogma.mentor import explain
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.report import catalog_payload, history_payload, tags_payload
@@ -65,6 +66,7 @@ def main(ctx: click.Context, pretty: bool) -> None:
 # extraction, not exemption.
 main.add_command(explain)
 main.add_command(mcp_command)
+main.add_command(contracts_command)
 
 
 # ---------------------------------------------------------------------------

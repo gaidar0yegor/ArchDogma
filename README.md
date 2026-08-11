@@ -22,7 +22,7 @@ Claims below are checkable; sources linked. Corrections welcome via the
 | [pydeps](https://github.com/thebjorn/pydeps) | visualisation only | no | no | yes |
 | [CodeScene](https://codescene.com/pricing) | partial | **yes** | no | no (OSS only; CLI needs a token) |
 | [repowise](https://github.com/repowise-dev/repowise) | no | **yes** | aggregate statistics, not per-finding sources | yes (AGPL) |
-| **ArchDogma** | planned (see roadmap) | **yes** | **yes — external cases fetch-verified; first-party cases labelled as such** | yes (MIT) |
+| **ArchDogma** | **yes — history-priced** | **yes** | **yes — external cases fetch-verified; first-party cases labelled as such** | yes (MIT) |
 
 ---
 
@@ -130,6 +130,28 @@ Every tag reports the ids of the catalog entries that claim it. Those entries ar
 ```
 
 That is the difference between a linter and this: `god-module at line 1` is no more useful than `C0301 line too long`. A tag with the conditions under which its dogma stops working is something you can argue with.
+
+### Contracts — priced by history
+
+Declare architecture rules in `pyproject.toml`; every violation carries the importing file's git history, because a layering breach in this quarter's churn-hotspot and one in a file untouched since 2023 are the same boolean and very different work items:
+
+```toml
+[[tool.archdogma.contracts]]
+name = "core must not import web"
+type = "forbidden"          # forbidden | layers | independence
+source = ["app.core"]
+forbidden = ["app.web"]
+```
+
+```bash
+archdogma contracts .                      # fail on any violation
+archdogma contracts . --fail-only-active   # report all, gate only violations
+                                           # in files changed in the last 90d
+```
+
+Contract semantics follow import-linter's (credit where due — it's the standard). What it can't do and this can: `--fail-only-active` still *reports* dormant violations — it gates the exit code, it never hides findings. And without usable git history every violation counts as active: unknown is not dormant.
+
+Our own contracts are declared in this repo's `pyproject.toml` and checked in CI.
 
 ### MCP server
 

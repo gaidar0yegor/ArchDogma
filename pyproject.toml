@@ -128,3 +128,18 @@ addopts = [
     "-v",
     "--strict-markers",
 ]
+
+# Dogfood: our own architecture contracts, checked by `archdogma contracts .`
+# in CI. The probe layer must not know the CLI exists; the catalog must not
+# depend on analysis code.
+[[tool.archdogma.contracts]]
+name = "probe does not import the cli"
+type = "forbidden"
+source = ["archdogma.probe"]
+forbidden = ["archdogma.cli"]
+
+[[tool.archdogma.contracts]]
+name = "catalog is a leaf"
+type = "forbidden"
+source = ["archdogma.catalog"]
+forbidden = ["archdogma.probe", "archdogma.cli", "archdogma.agent", "archdogma.mentor"]
