@@ -17,6 +17,7 @@ from archdogma import __version__
 from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
 from archdogma.catalog.renderer import render_catalog
 from archdogma.catalog.validator import has_errors, validate_catalog
+from archdogma.mentor import explain
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.report import catalog_payload, history_payload, tags_payload
 from archdogma.probe.walker import (
@@ -55,6 +56,12 @@ def main(ctx: click.Context, pretty: bool) -> None:
     """Root CLI group."""
     ctx.ensure_object(dict)
     ctx.obj["pretty"] = pretty
+
+
+# The mentor command lives in mentor.py and is registered here rather than
+# defined here: cli.py sits one definition under its own god-module
+# threshold, and the honest response to that is extraction, not exemption.
+main.add_command(explain)
 
 
 # ---------------------------------------------------------------------------
