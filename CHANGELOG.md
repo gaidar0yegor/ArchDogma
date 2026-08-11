@@ -7,6 +7,8 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-11
+
 ### Added
 - **`archdogma contracts`** — architecture contracts (forbidden / layers /
   independence, import-linter semantics, credited) checked against the
