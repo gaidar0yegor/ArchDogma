@@ -8,6 +8,18 @@ breaking changes are allowed in any release before `0.1.0`.
 ## [Unreleased]
 
 ### Added
+- **Eight more sourced failure cases** — `hundred-percent-coverage`,
+  `clean-architecture` and `oop-everywhere` move to `filled` (10 of 12 now);
+  `tdd` gains two more cases. Same three-gate vetting as the first batch.
+  Highlights: Lebrero's IG account and Coplien's coverage-gaming client for
+  coverage; Brodwall's fifteen-layer client and Bogard's onion-architecture
+  cracks for clean architecture; Neversoft's two-year inheritance unwind and
+  Django's CBV critique for OOP-everywhere; Jeffries' Sudoku series — carried
+  WITH his 2022 dispute of the moral — and Coplien's switched-off suites for
+  TDD. One verifier-mandated correction applied before landing: Coplien's
+  Maven anecdote happened at his own job in Denmark, not a consulting audit.
+  Remaining drafts: `self-documenting-code` (empty by standard) and
+  `scope-creep-feature`.
 - **`archdogma explain TARGET`** — the catalog as a mentor. One entry,
   whole: the rule as preached, where it comes from, the conditions under
   which it fails, who paid for it (with sources), the counter-position
