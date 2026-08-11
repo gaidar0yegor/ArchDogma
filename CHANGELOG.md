@@ -7,6 +7,22 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+- **Batch 3: incident cases for the Tier 2/3 tags' catalog entries** — the
+  launch-headline detectors now have receipts, not just methodology
+  citations. `untouchable-legacy`: Knight Capital (SEC order — dead code
+  left callable 9 years, $460M in 45 minutes) and Therac-25, re-homed from
+  its earlier rejection under KISS to the entry whose failure mode it
+  actually documents (age-trusted single-author code). `logical-coupling`:
+  Cloudflare's Nov 2025 feature-file outage and Reddit's Pi-Day 2023 (the
+  coupled config was not even in version control — the purest form).
+  `bus-factor`: event-stream (Tarr's own statement) and core-js
+  (Pushkarev's own accounting). `scope-creep-feature` gains the Office
+  Ribbon arc (Jensen Harris) and moves to **filled — 11 of 12**. Evernote
+  was researched and rejected: the source refuses to attribute cause, so
+  citing it for feature-bloat would be our inference. Source audit after:
+  68 sources, 0 dead.
+
 ## [0.6.0] - 2026-08-11
 
 ### Added

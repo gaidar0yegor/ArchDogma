@@ -574,7 +574,7 @@ _Break the dogma when:_
 
 
 
-## §12. Every User Request is a Feature (Scope Creep)  \[draft\]
+## §12. Every User Request is a Feature (Scope Creep)  \[filled\]
 
 **Definition.** Every user request gets implemented. Every interesting idea becomes a milestone. The product grows continuously.
 
@@ -591,6 +591,7 @@ _Break the dogma when:_
 **Failure cases.**
 
 - QuackNet DePIN platform: Wi-Fi probe network → Solana + Kafka + ClickHouse + AI in 8 months — QuackNet started as a focused tool: crowdsource Wi-Fi quality data from mobile devices. Within 8 months it expanded to: Solana blockchain for token rewards, Kafka for real-time ingestion, ClickHouse for analytics, on-device AI for signal quality estimation, and a validator monitoring network. Each feature was individually interesting. The product lost its original focus. The core Wi-Fi probe — the thing users actually understood — became buried under protocol complexity. First-party postmortem.
+- [Microsoft Office: every release grew the menu-and-toolbar UI for ~15 years until it collapsed into the Ribbon rewrite (Jensen Harris, 2006)](https://learn.microsoft.com/en-us/archive/blogs/jensenh/ye-olde-museum-of-office-past-why-the-ui-part-2) — Harris, who led the Office UX team, documented the arc in his "Why the UI" series: Word 2.0 (1992) had under 100 commands and 2 toolbars; Word 6 jumped to 8 toolbars; Office 97 hit 18 toolbars and nearly doubled top-level menu commands — "more room meant more features", and the customer request list was "miles-long": the growth was policy. By Word 97 "we started to see signs that people were feeling less in control of the program"; the UI "had begun to feel bloated... like a suitcase stuffed to the gills". Office 2000's adaptive menus and rafted toolbars tried to hide the accumulated surface without removing any of it ("we just added more pockets") — both failed and were turned off. The bill for never subtracting: a ground-up UI replacement, the Office 2007 Ribbon. Part 3, verified, carries the bloat and pockets passages: learn.microsoft.com/en-us/archive/blogs/jensenh/combating-the-perception-of-bloat-why-the-ui-part-3
 
 **Counter-dogmas.**
 
