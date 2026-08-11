@@ -7,6 +7,36 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Fixed
+- **Pre-launch audit of the v0.1-era catalog entries** — the ones that
+  predate the verification pipeline and had never been through it. Found by
+  our own adversarial review, fixed before anyone else could: the Segment
+  case was dated 2022 (article is July 2018) and called Centrifuge "the
+  monolith" (it was the queue infrastructure); the README quoted DHH with a
+  sentence that does not appear in his essay, and the TDD entry invented
+  Basecamp specifics — both replaced with verbatim quotes and an honest
+  "essay, not incident report" label; the same essay was cited for
+  Clean-Architecture claims it does not contain (case removed; two verified
+  cases remain); the Prime Video source was scrubbed by Amazon (archived
+  capture now cited, with a note); the EJB case misdescribed EJB interfaces
+  and filed indirection under inheritance (corrected and relabelled); the
+  AHA counter-dogma's thesis field held an erratum instead of a thesis; a
+  self-attributed counter-dogma cited this catalog's own author as an
+  authority (reattributed to the idea's real lineage); and the README
+  comparison table claimed tach had "no release since 2025-05" — false
+  (0.35.0 shipped 2026-05), corrected and de-snarked.
+- README discloses the AI assistance plainly (it was always in the commit
+  trailers) and the "fetch-verified" table cell now says what the honesty
+  rules already said: external cases fetch-verified, first-party labelled.
+
+### Added
+- `tools/verify_sources.py` — audits every source URL in the catalog
+  (OK/REDIRECT/BLOCKED/DEAD/NULL), exit 1 on dead links. "Every claim has a
+  source" is only as good as the last time somebody clicked the sources;
+  now clicking them is one command. Current state: 61 sources, 0 dead.
+- GitHub labels `postmortem` and `honesty-bug` now actually exist — the
+  README had been pointing contributors at labels nobody had created.
+
 ## [0.5.0] - 2026-08-11
 
 ### Added
