@@ -309,7 +309,7 @@ _Break the dogma when:_
 **Main signal:** You write a test before you understood what the code should do. Result — well-tested wrong design + a forest of mocks.
 
 
-## §7. SOLID as Law  \[draft\]
+## §7. SOLID as Law  \[filled\]
 
 **Definition.** SRP, OCP, LSP, ISP, DIP — five principles all code must follow.
 
@@ -325,7 +325,8 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Dan North: DIP-as-law produced 'shadow codebases' of one-interface-per-class across J2EE/Spring-era clients (talk 2016, writeup 2021)](https://dannorth.net/blog/cupid-the-back-story/) — First-person writeup of North's PubConf London talk "Why Every Element of SOLID is Wrong", drawing on ~30 years of consulting. On DIP applied to every dependency via wiring frameworks (J2EE, OSGi, Spring), he reports seeing "entire shadow codebases where each class is backed by exactly one interface, which only exists to satisfy a wiring framework or to inject a mock or stub" — and the promised payoff ("you can just swap out the database") "evaporates as soon as you try to". He calls SRP the "Pointlessly Vague Principle": artificial splitting of code that changes together. His "billions of dollars in sunk cost" line is rhetoric, not a measurement — cited here as testimony about a pattern he saw repeatedly, not as data. His alternative became the CUPID properties (2022).
+- [Mark Seemann: one-interface-per-class 'loose coupling' yields fake abstractions — a practice he had been guilty of himself (2010)](https://blog.ploeh.dk/2010/12/02/Interfacesarenotabstractions/) — Seemann (author of "Dependency Injection in .NET") documents the mechanical interface-extraction habit through which DIP was operationalised in .NET shops, aided by Visual Studio's Extract Interface making "it very easy to do the wrong thing": "you probably have a 1:1 relationship between your interfaces and the concrete classes that implement them... I've been guilty of this and didn't like the result." His verdict: "Having only one implementation of a given interface is a code smell." Concrete costs: interfaces extracted from an ORM context that stay coupled to it so no second implementation is ever possible, wrapper interfaces existing only to enable mocking, and IFooFactory/IFooPolicyFactory hierarchies. Scope note: the post never uses the word SOLID — it documents the "DIP everywhere" failure mode, and is cited for exactly that.
 
 **Success cases.**
 
@@ -408,7 +409,7 @@ _Break the dogma when:_
 **Main signal:** A new team member reads the function and understands WHAT it does, but not WHY it exists, WHY this approach, or WHY the seemingly wrong constant is correct.
 
 
-## §9. Premature optimization is the root of all evil  \[draft\]
+## §9. Premature optimization is the root of all evil  \[filled\]
 
 **Definition.** Don't optimize until you've profiled. (Usually cited without context.)
 
@@ -424,7 +425,8 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Joe Duffy (Microsoft, PLINQ): the Knuth quote used to hide 10-100x waste — teams parallelised for 8x instead of refactoring for 100x (2010)](https://joeduffyblog.com/2010/09/06/the-premature-optimization-is-evil-myth/) — Duffy ran the team that delivered PLINQ and wrote from inside the culture that practiced the dogma: the quote "is used to defend sloppy decision-making" and to defer performance thinking that then never happens. His first-hand observation: teams reached for parallelisation to get 8x speedups on expensive queries where, in his words, trivially refactoring to a slimmed-down algorithm would have sped the code up 100-fold — design-time performance thinking had been skipped, so hardware was thrown at an algorithmic problem. He also demonstrates the death-by-a-thousand-cuts mechanism with a measured LINQ-to-Objects example an order of magnitude slower than the equivalent loop (delegate allocations, closures, interface calls) — diffuse costs invisible to after-the-fact hotspot profiling. His prescription is Knuth's actual position: performance is thought about at design time, because architectural decisions cannot be profiled back out later.
+- [Nelson Elhage (Stripe, Sorbet): Facebook's Flow needed a multi-year re-architecture for performance that Sorbet designed in on day 1 (2020)](https://blog.nelhage.com/post/reflections-on-performance/) — Elhage co-authored the Sorbet Ruby typechecker and addresses the aphorism directly, calling it "decent default advice" whose limitations are critical. His documented example targets the dogma's blind spot — architecture: Sorbet restricted itself to local-only type inference up front, a structural decision that was cheap to make and "would have been incredibly costly to change"; the Flow team, which had not, was at time of writing "in the middle of a multi-year refactor to move Flow and Facebook's code base to a more local-only model". He also documents why profile-then-fix fails on such systems: Sorbet's speed comes from diffuse costs — "very few hot spots; time is divided relatively evenly" — not from discrete hotspots a profiler would surface. Structural performance decisions are design, not premature optimisation.
 
 **Success cases.**
 
@@ -457,7 +459,7 @@ _Break the dogma when:_
 **Main signal:** The codebase has no performance tests, no profiling history, and the team calls every performance concern premature. The quote has become a reason not to think.
 
 
-## §10. Functional purity / Immutability everywhere  \[draft\]
+## §10. Functional purity / Immutability everywhere  \[filled\]
 
 **Definition.** Avoid mutations. Pure functions. No side effects.
 
@@ -473,7 +475,9 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Discord: BEAM-enforced immutability collapsed on large member lists — replaced with a mutable Rust NIF (2019)](https://discord.com/blog/using-rust-to-scale-elixir-for-11-million-concurrent-users) — Discord's real-time infrastructure runs on Elixir, where the BEAM enforces immutability: every "mutation" produces a new copy. Guild member lists needed a sorted structure holding hundreds of thousands of entries under constant mutation, and immutable structures collapsed at that scale — plain lists took 500-3,000µs per insert at just 5,000 items; their best pure-Elixir OrderedSet hit 19,000µs inserting near the front of 250,000 items. They abandoned purity for this hot path and wrote a mutable SortedSet as a Rust NIF, getting 0.61-3.68µs per operation at 1,000,000 items. First-party writeup by Matt Nowack (Discord). Scope note: the immutability was language-enforced rather than a written team policy — this is the cleanest documented instance of the copy-cost failure mode, cited for that mechanism.
+- [Culture Amp: pure-FP Elm as the preferred frontend language (2016), retired over dual-ecosystem cost (2023)](https://kevinyank.com/posts/on-endings-why-how-we-retired-elm-at-culture-amp/) — Culture Amp made Elm — pure functional, enforced immutability, no side effects — its preferred language for new frontend code from 2016 and built entire products in it. The cost surfaced as organisational friction, not runtime failure: the design-system team maintained parallel React and Elm implementations of every component and the two diverged; adding Web Components would have meant "effectively adding a third view framework"; the Elm 0.18-to-0.19 migration took roughly a year of volunteer effort; and an acquisition made the codebase ~75% React overnight, leaving about six committed Elm advocates. With TypeScript covering the original type-safety appeal, Elm was moved to "contain" and retired. Written by Kevin Yank, who led both the adoption and the retirement.
+- [Twitter Lite: every keystroke through the global Redux store cost ~200ms per keypress on low-end Android (2017)](https://medium.com/@paularmstrong/twitter-lite-and-high-performance-react-progressive-web-apps-at-scale-d28a00e780a3) — The Twitter Lite PWA followed the Redux-everywhere pattern: the tweet composer dispatched draft text to the global store on every keypress. On Android 5 devices each keypress cost nearly 200ms and the insertion point jumped, producing jumbled sentences as users typed. The fix broke the dogma for high-frequency local state — the draft moved into local component state, cutting overhead by over half — and dispatches were batched (roughly 16 renders down to 8 in their measured case). First-party lessons-learned by Paul Armstrong (Twitter Lite team). Scope note: the post criticises only global-store-for-keystroke-state and dispatch storms, not Redux or immutability in general — it is cited for exactly that failure mode.
 
 **Success cases.**
 
@@ -507,7 +511,7 @@ _Break the dogma when:_
 
 **Related tags:** `mutable-default-arg`.
 
-## §11. KISS (Keep It Simple, Stupid)  \[draft\]
+## §11. KISS (Keep It Simple, Stupid)  \[filled\]
 
 **Definition.** Prefer simple solutions over complex ones. Complexity is the enemy. Remove everything that isn't strictly necessary.
 
@@ -525,7 +529,8 @@ _Break the dogma when:_
 
 **Failure cases.**
 
-- _need_postmortems_
+- [Google GFS: single master chosen 'to simplify the overall design problem' — became the bottleneck the whole company engineered around (retrospective 2009)](https://queue.acm.org/detail.cfm?id=1594206) — Sean Quinlan, GFS tech lead, says the single-master design "was actually one of the very first decisions, mostly just to simplify the overall design problem" — a distributed master was deemed too hard to build in the year the three-person team had. Sized for hundreds of terabytes and a few million files, the design met tens of petabytes: the master (a few thousand ops/second, facing thousands of concurrent clients) became the bottleneck, and with all metadata in the master's memory, file count became the scarcest resource in Google's storage. The complexity did not disappear — it moved into every application: teams bundled small files into big ones, partitioned data across multi-cell setups with static namespace files, BigTable kept two transaction logs open to dodge write hiccups, and Gmail went multihomed partly "to hide the GFS problems" (Gobioff: "we just decided to push some of the complexity out to the applications"). Manual master failover could take a cell down for an hour. Google replaced the design with a distributed-master system. Quinlan is candid that the simple design was the right call for shipping fast — this entry documents what the simplification cost over the following decade. Note: ACM Queue bot-blocks automated fetchers (403); the page is live in a browser and archived (web.archive.org, 2009-08-13 capture of this URL).
+- [Go: generics omitted for language simplicity (2009) — the complexity reappeared as duplication in every user codebase, reversed in Go 1.18 (2022)](https://go.dev/blog/why-generics) — Russ Cox framed the deliberate choice in "The Generic Dilemma" (2009): "do you want slow programmers, slow compilers and bloated binaries, or slow execution times?" Go launched having chosen slow programmers — the language stayed simple by omitting generics. Ian Lance Taylor's first-party writeup documents what that simplicity cost its users: identical functions hand-duplicated per type, each needing its own tests; interface{} workarounds where "we lose all the benefits of static typing"; reflection "so awkward to write and slow to run that few people do that"; code generators complicating every build. "In three years of Go surveys, lack of generics has always been listed as one of the top three problems to fix in the language." The avoided language-spec complexity reappeared inside every user codebase; the team reversed course and shipped generics in Go 1.18 (March 2022). A cost-of-policy case acknowledged and corrected by the team itself, not an outage.
 
 **Success cases.**
 
