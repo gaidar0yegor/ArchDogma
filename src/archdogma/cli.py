@@ -17,6 +17,7 @@ from archdogma import __version__
 from archdogma.catalog.loader import Catalog, CatalogError, load_catalog
 from archdogma.catalog.renderer import render_catalog
 from archdogma.catalog.validator import has_errors, validate_catalog
+from archdogma.agent import mcp_command
 from archdogma.mentor import explain
 from archdogma.probe.tags.tier1 import TIER1_DETECTORS
 from archdogma.report import catalog_payload, history_payload, tags_payload
@@ -58,10 +59,12 @@ def main(ctx: click.Context, pretty: bool) -> None:
     ctx.obj["pretty"] = pretty
 
 
-# The mentor command lives in mentor.py and is registered here rather than
-# defined here: cli.py sits one definition under its own god-module
-# threshold, and the honest response to that is extraction, not exemption.
+# The mentor command lives in mentor.py, the MCP command in agent.py; both
+# are registered here rather than defined here: cli.py sits one definition
+# under its own god-module threshold, and the honest response to that is
+# extraction, not exemption.
 main.add_command(explain)
+main.add_command(mcp_command)
 
 
 # ---------------------------------------------------------------------------
@@ -209,10 +212,10 @@ def _print_discovered_functions(discovered: list[DiscoveredFunction]) -> None:
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["plain", "json"]),
+    type=click.Choice(["plain", "json", "sarif"]),
     default="plain",
     show_default=True,
-    help="Output format.",
+    help="Output format. sarif emits SARIF 2.1.0 for aggregators and code-scanning UIs.",
 )
 @click.option(
     "--summary/--no-summary",
@@ -249,7 +252,17 @@ def scan(
     file_results = list(scan_path(path, catalog=catalog, excludes=exclude))
 
     if not file_results:
-        click.echo("No Python files found.")
+        # Machine formats stay machine-readable even when empty — a human
+        # sentence on stdout breaks every parser downstream.
+        if output_format == "sarif":
+            from archdogma import __version__ as _v
+            from archdogma.report import sarif_payload
+
+            click.echo(_json.dumps(sarif_payload([], _v), indent=2))
+        elif output_format == "json":
+            click.echo(_json.dumps({"scan_root": str(path), "total_files": 0, "files": []}, indent=2))
+        else:
+            click.echo("No Python files found.")
         return
 
     error_files = [r for r in file_results if r.parse_error is not None]
@@ -257,6 +270,19 @@ def scan(
     total_items = sum(len(r.results) for r in scanned_files)
     total_tags = sum(r.tag_count for r in scanned_files)
     flagged_count = sum(1 for r in scanned_files if r.has_tags)
+
+    if output_format == "sarif":
+        from archdogma import __version__ as _v
+        from archdogma.report import sarif_payload, scan_findings_for_sarif
+
+        click.echo(
+            _json.dumps(
+                sarif_payload(scan_findings_for_sarif(file_results), _v), indent=2
+            )
+        )
+        if fail_on_tags and total_tags > 0:
+            sys.exit(1)
+        return
 
     if output_format == "json":
         data: dict = {
@@ -349,10 +375,10 @@ def scan(
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["plain", "json"]),
+    type=click.Choice(["plain", "json", "sarif"]),
     default="plain",
     show_default=True,
-    help="Output format.",
+    help="Output format. sarif emits SARIF 2.1.0 for aggregators and code-scanning UIs.",
 )
 @click.option(
     "--history/--no-history",
@@ -403,11 +429,35 @@ def modules(
     )
 
     if not result.modules:
-        click.echo("No Python files found.")
+        if output_format == "sarif":
+            from archdogma import __version__ as _v
+            from archdogma.report import sarif_payload
+
+            click.echo(_json.dumps(sarif_payload([], _v), indent=2))
+        elif output_format == "json":
+            click.echo(
+                _json.dumps({"scan_root": str(path), "total_modules": 0, "modules": []}, indent=2)
+            )
+        else:
+            click.echo("No Python files found.")
         return
 
     graph = result.graph
     edge_count = sum(len(t) for t in graph.edges.values())
+
+    if output_format == "sarif":
+        from archdogma import __version__ as _v
+        from archdogma.report import module_findings_for_sarif, sarif_payload
+
+        click.echo(
+            _json.dumps(
+                sarif_payload(module_findings_for_sarif(list(result.flagged)), _v),
+                indent=2,
+            )
+        )
+        if fail_on_tags and result.tag_count > 0:
+            sys.exit(1)
+        return
 
     if output_format == "json":
         shown = result.modules if show_all else result.flagged

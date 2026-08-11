@@ -275,3 +275,17 @@ def test_load_history_declares_it_does_not_follow_renames(repo: Path) -> None:
     hist = load_history(repo)
     assert hist is not None
     assert hist.follows_renames is False
+
+
+def test_shallow_clone_is_refused_not_served_truncated(repo: Path, tmp_path: Path) -> None:
+    """--depth 1 must not make every file look young; we return None."""
+    for i in range(3):
+        commit(repo, "a.py", f"x = {i}\n", JAN_2020 + i * 86400)
+    shallow = tmp_path / "shallow"
+    subprocess.run(
+        ["git", "clone", "-q", "--depth", "1", f"file://{repo}", str(shallow)],
+        check=True,
+        capture_output=True,
+    )
+    assert load_history(shallow) is None
+    assert load_history(repo) is not None

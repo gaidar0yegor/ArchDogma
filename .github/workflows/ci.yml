@@ -43,6 +43,17 @@ jobs:
           archdogma render-catalog --output DOGMAS.md
           git diff --exit-code -- DOGMAS.md
 
+      - name: Wheel ships the catalog
+        # The catalog is the differentiator; a wheel without it is a linter.
+        # Build, install into a bare venv, ask for a dogma.
+        run: |
+          pip install build >/dev/null
+          python -m build --wheel --outdir /tmp/dist >/dev/null
+          python -m venv /tmp/wheelenv
+          /tmp/wheelenv/bin/pip install -q /tmp/dist/*.whl
+          /tmp/wheelenv/bin/archdogma explain kiss | head -3
+          cd /tmp && /tmp/wheelenv/bin/archdogma explain kiss >/dev/null
+
       - name: Dogfood — the scanner runs on its own source
         # --no-fail on purpose: this project does not exempt itself from its
         # own detectors, and tier1.py is a known god-module. The step exists

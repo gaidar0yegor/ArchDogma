@@ -7,6 +7,40 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+- **`archdogma mcp`** — MCP server over stdio (official SDK via the `[mcp]`
+  extra; core stays two-dependency). Five tools: `scan_functions`,
+  `analyze_modules`, `explain_dogma`, `list_dogmas`, `check_before_refactor`
+  — the pre-flight question for an agent about to edit an unfamiliar file:
+  dependents, age, author count, temporal partners. Tool logic is plain
+  functions in `agent.py`, testable without an MCP client; the verdict
+  facts are gated by the Tier 3 detectors' OWN thresholds, imported rather
+  than restated — an earlier draft restated them lower while claiming
+  parity, and the pre-merge adversarial review caught exactly that.
+  Guarded against monorepo-root scans (explicit refusal, not a stall; the
+  guard honours excludes, since its own error message recommends them).
+- **Shallow clones are now detected and refused** (`git rev-parse
+  --is-shallow-repository`). Previously `load_history`'s docstring promised
+  a `--depth 1` clone would not make every file look young — and nothing
+  enforced it: a shallow clone returned `available: true` over truncated
+  history. Pre-existing 0.4.0 bug, surfaced by the same review.
+- **The wheel now ships the catalog** (`archdogma/_data/dogmas.yaml`,
+  force-included from the repo-root source of truth). Before this, `pip
+  install archdogma` delivered explain/list_dogmas that answered "no
+  catalog available in this installation" — the advertised differentiator
+  missing from the advertised install path. CI now builds the wheel,
+  installs it into a bare venv, and asserts `explain kiss` works.
+- When a scanned project ships its own `catalog/dogmas.yaml`, the payload
+  now says so (`catalog.note`): its claims outrank ours for its own code,
+  and tags it does not claim carry no context — stated, not silent.
+- **SARIF 2.1.0 output** (`--format sarif` on `scan` and `modules`) for
+  code-scanning UIs and aggregator platforms. All results are `warning`
+  level, deliberately: no invented severity scale.
+- **Claude Code skill** in `integrations/claude-code/` — teaches an agent
+  when to run the pre-flight check and how to read the output honestly
+  (`history.available: false` is never a clean bill; tags are pointers,
+  not verdicts).
+
 ### Changed
 - **Core dependencies cut to two** (`click`, `pyyaml`). `rich` moved to the
   `pretty` extra and `pyttsx3` to the `voice` extra. `--pretty` without rich
