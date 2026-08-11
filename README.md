@@ -32,7 +32,7 @@ Programming has sacred rules. "Always test." "Use microservices." "No copy-paste
 
 ArchDogma collects real postmortems — companies that followed a rule and paid for it. Not to say the rules are wrong. To say they have conditions.
 
-**Current catalog:** 12 dogmas — 10 filled with sourced failure cases — and 22 candidates.
+**Current catalog:** 12 dogmas — 11 filled with sourced failure cases — and 22 candidates, the Tier 2/3 ones now carrying incident cases of their own (Knight Capital, Cloudflare 2025, Reddit Pi-Day, event-stream, core-js).
 
 Browse the full catalog: [DOGMAS.md](DOGMAS.md)
 

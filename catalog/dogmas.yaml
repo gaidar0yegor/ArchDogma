@@ -895,8 +895,9 @@ dogmas:
     # misplaced faith in software — not a simplicity doctrine. Filing the most
     # famous safety failure in software under KISS on that evidence is the
     # kind of stretch this catalog exists to call out elsewhere. Recorded so
-    # the next researcher does not re-tread it; it may belong under a future
-    # "redundancy is waste" entry where the documented motive actually fits.
+    # the next researcher does not re-tread it. Resolution 2026-08-12: it
+    # found its honest home under the untouchable-legacy candidate — what
+    # failed there is age-trusted, single-author, load-bearing code.
     failure_cases:
       - title: "Google GFS: single master chosen 'to simplify the overall design problem' — became the bottleneck the whole company engineered around (retrospective 2009)"
         source_url: "https://queue.acm.org/detail.cfm?id=1594206"
@@ -991,7 +992,7 @@ dogmas:
   - id: scope-creep-feature
     number: 12
     title: "Every User Request is a Feature (Scope Creep)"
-    status: draft
+    status: filled
     definition: "Every user request gets implemented. Every interesting idea becomes a milestone. The product grows continuously."
     origin: "Early startup culture: 'we need to be everything to everyone'. Reinforced by agile backlogs with no pruning discipline."
 
@@ -1013,6 +1014,24 @@ dogmas:
           network. Each feature was individually interesting. The product lost its original focus. The core
           Wi-Fi probe — the thing users actually understood — became buried under protocol complexity.
           First-party postmortem.
+      - title: "Microsoft Office: every release grew the menu-and-toolbar UI for ~15 years until it collapsed into the Ribbon rewrite (Jensen Harris, 2006)"
+        source_url: "https://learn.microsoft.com/en-us/archive/blogs/jensenh/ye-olde-museum-of-office-past-why-the-ui-part-2"
+        date: "2006"
+        summary: >-
+          Harris, who led the Office UX team, documented the arc in his "Why
+          the UI" series: Word 2.0 (1992) had under 100 commands and 2
+          toolbars; Word 6 jumped to 8 toolbars; Office 97 hit 18 toolbars
+          and nearly doubled top-level menu commands — "more room meant more
+          features", and the customer request list was "miles-long": the
+          growth was policy. By Word 97 "we started to see signs that people
+          were feeling less in control of the program"; the UI "had begun to
+          feel bloated... like a suitcase stuffed to the gills". Office
+          2000's adaptive menus and rafted toolbars tried to hide the
+          accumulated surface without removing any of it ("we just added
+          more pockets") — both failed and were turned off. The bill for
+          never subtracting: a ground-up UI replacement, the Office 2007
+          Ribbon. Part 3, verified, carries the bloat and pockets passages:
+          learn.microsoft.com/en-us/archive/blogs/jensenh/combating-the-perception-of-bloat-why-the-ui-part-3
 
     counter_dogmas:
       - name: "Feature pruning"
@@ -1129,6 +1148,50 @@ candidates:
       changing it breaks forty importers. Feathers' framing is the useful
       one — the property that makes code legacy is not its age but the
       absence of a safe way to change it. No postmortem yet; candidate.
+    failure_cases:
+      - title: "Knight Capital: dead 'Power Peg' code left callable in the live order router for 9 years — reactivated, $460M gone in 45 minutes (2012)"
+        # sec.gov bot-blocks generic fetchers; fetched with a declared UA per
+        # SEC convention. Canonical path moved to /files/ in a sec.gov reorg.
+        source_url: "https://www.sec.gov/files/litigation/admin/2013/34-70694.pdf"
+        date: "2012"
+        summary: >-
+          Knight retired Power Peg in 2003 but left it present and callable in
+          SMARS, its equity order router, for nine years — the SEC found no
+          written protocol for unused code on production servers and no
+          requirement to retest it when touched. A 2005 change moved the
+          cumulative-quantity safety counter earlier in the flow and "Knight
+          did not retest the Power Peg code". In 2012 new code repurposed
+          Power Peg's old activation flag; a deploy missed one of eight
+          servers (no second-person review), and orders hit the ancient code
+          with its safety counter gone: 212 parent orders became 4M+
+          executions in ~45 minutes, a loss over $460M. Mid-incident rollback
+          made it worse — removing the new code activated Power Peg on the
+          seven healthy servers too. The SEC's order faults the practice
+          itself: no controls against "the activation of code no longer
+          intended for use... but left on its servers". Settled proceeding:
+          findings neither admitted nor denied; $12M penalty.
+      - title: "Therac-25: a departed programmer's decade-old code treated as proven by age — hardware interlocks removed over it (1985-87)"
+        source_url: "https://www.cs.columbia.edu/~junfeng/08fa-e6998/sched/readings/therac25.pdf"
+        date: "1993 (accidents 1985-1987)"
+        summary: >-
+          The control software was written by one programmer in PDP-11
+          assembly, evolved from Therac-6 code begun in 1972; some Therac-20
+          routines were reused — a fact AECL's own QA manager learned only
+          after the accidents. Treating the long-exercised code as proven,
+          AECL "decided not to duplicate all the existing hardware safety
+          mechanisms and interlocks"; its 1983 fault tree assumed programming
+          errors were "reduced by extensive testing", and safety was defended
+          by citing "2,700 hours of use". The programmer left in 1986; in
+          litigation no AECL employee could describe even his education. Race
+          conditions in that inherited code produced six massive overdoses,
+          with deaths — the worst radiation accidents in the history of
+          medical accelerators. Placement note: this case was researched for
+          the KISS entry and rejected there (AECL's documented motive was not
+          a simplicity doctrine); it sits here because what failed is exactly
+          this entry's "finished" branch — old, untouched, load-bearing code
+          trusted because of its age, its sole author gone.
+          (Leveson & Turner, IEEE Computer 26(7), 1993; Columbia course
+          mirror; DOI 10.1109/MC.1993.274940.)
     sources:
       - title: "Michael Feathers, «Working Effectively with Legacy Code» (2004) — legacy defined by the absence of tests that make change safe"
         url: null
@@ -1167,6 +1230,39 @@ candidates:
       is documented, not hidden. Naive versions of this measure are famously
       noisy, so a commit touching many files contributes no pairs and files
       with very few revisions are excluded. No postmortem yet; candidate.
+    failure_cases:
+      - title: "Cloudflare: a ClickHouse permissions change silently doubled the Bot Management feature file and crashed the core proxy worldwide (2025)"
+        source_url: "https://blog.cloudflare.com/18-november-2025-outage/"
+        date: "2025"
+        summary: >-
+          Two co-dependent halves with no structural link: a ClickHouse query
+          generating a "feature file" of ML features, and the proxy's Rust
+          loader with a hardcoded 200-feature preallocation (normal ~60). A
+          permissions change made underlying-table metadata visible, the
+          query returned duplicate columns, the file doubled past the limit
+          nobody knew was coupled to it, and the proxy panicked ("called
+          Result::unwrap() on an Err value") fleet-wide — ~5h46m of 5xx
+          across Cloudflare's network. The remediations are the moral: make
+          the implicit contract explicit, validate internal config like user
+          input. First-party postmortem by CEO Matthew Prince.
+      - title: "Reddit Pi-Day outage: Kubernetes renamed a node label; an out-of-band Calico config that depended on it took Reddit down for 314 minutes (2023)"
+        # reddit.com bot-blocks fetchers inconsistently; the post is on
+        # Reddit's official r/RedditEng engineering blog, by Jayme Howard.
+        source_url: "https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/"
+        date: "2023"
+        summary: >-
+          A Kubernetes 1.23→1.24 upgrade removed the node label
+          node-role.kubernetes.io/master (renamed since 1.20). Reddit's
+          Calico route-reflector config selected on the old label — and had
+          been hand-edited via Calico's CLI outside the Kubernetes API, so it
+          was "committed nowhere, leaving us with no record of it, and no
+          breadcrumbs for engineers to follow". When the label vanished,
+          cluster networking died; 314 minutes down, control plane restored
+          from backup, cause found only hours after recovery. The purest form
+          of this entry's failure mode — with the twist that the coupled
+          artifact was not even in version control, so no git-based signal
+          could have existed. The detector finds the couplings that ARE in
+          history; this case is why leaving one outside history is worse.
     sources:
       - title: "Gall, Hajek, Jazayeri — «Detection of Logical Coupling Based on Product Release History» (ICSM 1998), the original formulation"
         url: null
@@ -1184,6 +1280,35 @@ candidates:
       identity comes from git's mailmap-resolved name, so inconsistent commit
       identities inflate diversity and shared bot accounts deflate it — the
       measure is of commit metadata, not of who actually understands the code.
+    failure_cases:
+      - title: "event-stream: the ecosystem depended on a module with one burned-out maintainer, who handed it to a stranger — malware shipped (2018)"
+        source_url: "https://gist.github.com/dominictarr/9fd9c1024c94592bc7268d36b8d83b3a"
+        date: "2018"
+        summary: >-
+          Dominic Tarr's own statement after the compromise: he had long
+          stopped using the module and got "literally nothing" from
+          maintaining it, so when a volunteer offered to take over he handed
+          publish rights to a stranger — who shipped code targeting
+          cryptocurrency wallets to everything downstream. Tarr names the
+          structural cause himself: small shared dependencies maintained by
+          one unpaid person who has moved on. His fixes: "Pay the
+          maintainers!!", and ecosystems that depend on a module should share
+          its maintenance. The dogma applied here is the downstream one —
+          thousands of teams treating a one-author dependency as safe
+          infrastructure.
+      - title: "core-js: ~52% of top websites on a polyfill maintained by one man — and development stalled when his life did (2023)"
+        source_url: "https://github.com/zloirock/core-js/blob/master/docs/2023-02-14-so-whats-next.md"
+        date: "2023"
+        summary: >-
+          Denis Pushkarev's first-person accounting: core-js on ~52% of the
+          top 1,000 websites (~75-80% of the top 100), ~250M npm downloads a
+          month — and essentially one active maintainer. Years of failing to
+          attract co-maintainers because most developers do not know they use
+          it; ~250 unpaid hours a month at roughly $2/hour as donations fell
+          from $2,500 to ~$400/month; ten months in prison during which half
+          the web's polyfill had no one. His stated endgame without backing:
+          gradual abandonment. The bus factor of one, materialised and
+          documented by the one.
     sources:
       - title: "Avelino, Passos, Hora, Valente — «A Novel Approach for Estimating Truck Factors» (ICPC 2016)"
         url: "https://arxiv.org/abs/1604.06766"
