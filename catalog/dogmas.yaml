@@ -124,17 +124,6 @@ dogmas:
       - "Testing becomes harder when every boundary needs a mock or fake."
 
     failure_cases:
-      - title: "The enterprise FizzBuzz and DHH's rejection of mandatory layering for Rails apps"
-        source_url: "https://dhh.dk/2014/tdd-is-dead-long-live-testing.html"
-        date: "2014"
-        summary: >-
-          DHH explicitly documented Basecamp's position: adding Clean Architecture layers (interfaces,
-          adapters, use cases, domain models) to a Rails app before the domain is understood produces
-          the wrong abstractions under a formal structure. The cost — mapping DTOs between layers,
-          maintaining interface contracts that never change — exceeded any architectural benefit for a
-          single-product team. The codebase became harder to navigate and slower to change. Basecamp's
-          'Majestic Monolith' approach (flat ActiveRecord, no adapter indirection) has served the product
-          for 20+ years.
       - title: "Fifteen layers of data-copying, mandated by a consultant — Johannes Brodwall's client review (2014)"
         source_url: "https://johannesbrodwall.com/2014/07/10/the-madness-of-layered-architecture/"
         date: "2014"
@@ -255,10 +244,13 @@ dogmas:
         attribution: "Sandi Metz, 2016"
         source_url: "https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction"
         thesis: "Duplication is far cheaper than the wrong abstraction."
+      # Erratum, kept as a comment rather than as the thesis it once
+      # squatted in: an earlier revision attributed AHA to Sandi Metz.
+      # Different authors — Dodds credits Metz and Cherny as influences.
       - name: "AHA (Avoid Hasty Abstractions)"
         attribution: "Kent C. Dodds, 2019"
         source_url: "https://kentcdodds.com/blog/aha-programming"
-        thesis: "Previously in the catalog AHA was incorrectly attributed to Sandi Metz — these are different authors."
+        thesis: "Optimize for change first. Prefer duplication until the abstraction is obvious — a hasty abstraction is costlier than repeated code."
 
     honest_verdict:
       status: draft_awaiting_cases
@@ -300,17 +292,27 @@ dogmas:
       - "Debug takes 3 hours because traces scatter across 12 services."
 
     failure_cases:
-      - title: "Segment: 140+ microservices → single Go service \"Centrifuge\" (2022)"
+      - title: "Segment: 140+ destination microservices folded back into one monolithic service (Alexandra Noonan, 2018)"
         source_url: "https://segment.com/blog/goodbye-microservices/"
-        date: "2022"
+        date: "2018"
         summary: >-
-          Segment built 140+ individual microservices, one per data destination (Salesforce, Mixpanel, etc.).
-          Each duplicated the same routing and retry logic. Debugging a single bad event required tracing
-          through dozens of services; on-call engineers couldn't hold the system model in memory. The team
-          rewrote everything as a single Go service with an internal plugin model. Ops burden dropped
-          dramatically, delivery reliability improved, and the codebase became understandable again.
+          Segment ran 140+ individual destination services, one per integration
+          (Salesforce, Mixpanel, ...), each duplicating routing and retry logic;
+          on-call engineers could not hold the system in their heads. Alexandra
+          Noonan's first-party writeup describes folding the per-destination
+          services back into a single monolithic destination service. Centrifuge,
+          often misremembered as "the monolith", was the new queue/traffic
+          infrastructure that replaced the per-destination queues feeding it —
+          not the consolidated service itself. Ops burden dropped and delivery
+          reliability improved. URL note: segment.com now redirects this post to
+          twilio.com (Segment's owner); the article is intact at the new host.
+          This entry previously said "2022" and misattributed Centrifuge — found
+          by our own pre-launch audit; the case stands, our metadata was wrong.
       - title: "Amazon Prime Video: serverless microservices → single process, 90% cost reduction (2023)"
-        source_url: "https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
+        # The original primevideotech.com URL now 301s to a generic Amazon
+        # marketing page — the post was scrubbed. Archived capture used
+        # instead, same convention as the Coplien mirror.
+        source_url: "https://web.archive.org/web/2023/https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
         date: "2023"
         summary: >-
           Prime Video's audio/video monitoring was built as serverless microservices for elasticity. Data
@@ -333,7 +335,7 @@ dogmas:
         thesis: "Modules with clear boundaries inside one process. No network boundaries, but with the ability to split later."
       - name: "Prime Video monolith migration"
         attribution: "Amazon Prime Video Tech Blog, 2023"
-        source_url: "https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
+        source_url: "https://web.archive.org/web/2023/https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90"
         thesis: "Moving from serverless/microservices back to monolith with 90% reduction in infrastructure costs."
 
     honest_verdict:
@@ -375,17 +377,24 @@ dogmas:
       - "Go, Rust, Haskell — languages with no inheritance at all produce production-quality systems."
 
     failure_cases:
-      - title: "Java EJB 2.x: 7+ files and 400 lines of boilerplate for a 5-line business rule (1999–2004)"
+      - title: "Java EJB 2.x: spec-mandated interfaces and boilerplate for every entity (1999-2004)"
+        # Print citation: Rod Johnson, "Expert One-on-One J2EE Design and
+        # Development", Wrox, 2002 — url null per catalog convention.
         source_url: null
         date: "2002"
         summary: >-
-          Java 2 Enterprise Edition mandated EJBs for any server-side logic. A single 'User' entity
-          required: Home interface, Local interface, Remote interface, Bean implementation class, and XML
-          deployment descriptor — before writing any business logic. Deep inheritance from EJB base classes
-          enforced by the spec. Rod Johnson documented this in 'Expert One-on-One J2EE Design and
-          Development' (Wrox, 2002) as an industry-wide failure of interface/inheritance dogma. He built
-          Spring Framework specifically to eliminate it. By 2004 Spring had wider adoption than the official
-          J2EE spec; EJB 3.0 (2006) rewrote the spec to adopt Spring's approach.
+          J2EE culture mandated EJBs for server-side logic. A remotely-accessed
+          entity bean required a Home interface, a Remote interface, the bean
+          implementation class and an XML deployment descriptor (EJB 2.0 added
+          the LocalHome/Local pair for in-process access) — before any business
+          logic. Precision note from our own audit: the tax here was
+          spec-enforced INDIRECTION and boilerplate — beans implementing
+          framework interfaces and lifecycle callbacks — rather than deep
+          inheritance chains; the case sits under this dogma for the
+          "framework object model as the only truth" failure mode. Rod Johnson
+          documented the cost in "Expert One-on-One J2EE Design and Development"
+          (Wrox, 2002) and built Spring specifically to eliminate it; EJB 3.0
+          (2006) rewrote the spec in Spring's image.
       - title: "Neversoft's Tony Hawk games: the industry-standard inheritance hierarchy became a 'blob' that took two years to unwind (Mick West, 2007)"
         source_url: "https://cowboyprogramming.com/2007/01/05/evolve-your-heirachy/"
         date: "2007"
@@ -464,16 +473,23 @@ dogmas:
       - "Research / exploratory coding."
 
     failure_cases:
-      - title: "DHH/Basecamp: over-mocked TDD test suite that passed but missed integration bugs (2014)"
+      - title: "DHH: \"Test-first units leads to an overly complex web of intermediary objects\" — a first-person renunciation (2014)"
         source_url: "https://dhh.dk/2014/tdd-is-dead-long-live-testing.html"
         date: "2014"
         summary: >-
-          Basecamp's codebase accumulated tests designed for TDD purity: controllers mocked to avoid
-          touching the database, models mocked to avoid touching controllers, every class given an interface
-          to enable injection. Tests ran fast and passed. Integration bugs multiplied — the mocked
-          boundaries didn't match the real ones. DHH published 'TDD is Dead. Long live testing.' and the
-          team moved to higher-level system tests that actually caught bugs. Lesson: test isolation can
-          create a false safety signal when the mocks don't model the real integration points.
+          Verbatim from the essay: "Test-first units leads to an overly complex
+          web of intermediary objects and indirection in order to avoid doing
+          anything that's 'slow'. Like hitting the database. Or file IO... It's
+          given birth to some truly horrendous monstrosities of architecture. A
+          dense jungle of service objects, command patterns, and worse." His
+          stated practice after renouncing test-first: test Active Record models
+          directly against the database with fixtures, and move emphasis toward
+          "slow, system tests" via Capybara. Scope note, per this catalog's
+          rules: this is an opinion essay and first-person account by the named
+          responsible engineer — it names the failure mode from experience but
+          reports no incident numbers, and it is labelled accordingly. An
+          earlier version of this entry invented Basecamp specifics the essay
+          does not contain; our own pre-launch audit caught it.
       - title: "Ron Jeffries test-drives a Sudoku solver into a dead end; Norvig solves it with domain knowledge (2006) — and Jeffries disputes the moral (2022)"
         source_url: "https://ronjeffries.com/xprog/articles/oksudoku/"
         date: "2006"
@@ -924,14 +940,17 @@ dogmas:
     success_cases: need_data
 
     counter_dogmas:
-      - name: "Simple but Smart = Genius"
-        attribution: "Yegor Gaidar, 2026 (ArchDogma issue ARC-222)"
+      # An earlier revision carried a self-attributed counter-dogma here
+      # ("Yegor Gaidar, 2026"). A catalog whose authority is other people's
+      # documented experience does not get to cite its own author as a
+      # counter-authority next to Hickey and Gabriel; the underlying idea
+      # belongs to the (likely apocryphal but standard) Einstein maxim.
+      - name: "As simple as possible, but not simpler"
+        attribution: "attributed to Albert Einstein (paraphrase; attribution disputed)"
         thesis: >
-          KISS without intelligence produces dumb simplicity. Real mastery is
-          achieving simple interfaces over genuinely complex systems — not
-          pretending complexity doesn't exist. Minecraft: one voxel, infinite
-          depth. Einstein: «Everything should be made as simple as possible,
-          but not simpler.»
+          Simplicity is bounded from below by the domain's real complexity.
+          Simple interfaces over genuinely complex systems are mastery;
+          pretending the complexity does not exist just relocates it.
       - name: "Simple Made Easy"
         attribution: "Rich Hickey, Strange Loop 2011"
         source_url: "https://www.infoq.com/presentations/Simple-Made-Easy/"

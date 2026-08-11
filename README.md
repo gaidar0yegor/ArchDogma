@@ -10,7 +10,7 @@ Linters see code. ArchDogma sees **history × structure** — and every finding
 comes with a receipt: a documented, sourced case of a real team paying for
 this exact pattern.
 
-### What nothing else does
+### Where this sits
 
 Claims below are checkable; sources linked. Corrections welcome via the
 `honesty-bug` label.
@@ -18,11 +18,11 @@ Claims below are checkable; sources linked. Corrections welcome via the
 | Tool | Import-graph contracts | Git history × structure | Findings linked to sourced real-world failures | Free for private code |
 |---|---|---|---|---|
 | [import-linter](https://github.com/seddonym/import-linter) | yes | no | no | yes |
-| [tach](https://github.com/gauge-sh/tach) | yes | no | no | yes (no release since 2025-05) |
+| [tach](https://github.com/gauge-sh/tach) | yes | no | no | yes |
 | [pydeps](https://github.com/thebjorn/pydeps) | visualisation only | no | no | yes |
 | [CodeScene](https://codescene.com/pricing) | partial | **yes** | no | no (OSS only; CLI needs a token) |
 | [repowise](https://github.com/repowise-dev/repowise) | no | **yes** | aggregate statistics, not per-finding sources | yes (AGPL) |
-| **ArchDogma** | planned (see roadmap) | **yes** | **yes — every case fetch-verified** | yes (MIT) |
+| **ArchDogma** | planned (see roadmap) | **yes** | **yes — external cases fetch-verified; first-party cases labelled as such** | yes (MIT) |
 
 ---
 
@@ -58,20 +58,20 @@ archdogma explain dry --speak       # spoken summary, same as probe --speak
 
 ### Selected postmortems
 
-**Microservices for everything → Segment (2022)**
-140+ services, one per data destination. Routing logic duplicated 140 times. On-call couldn't hold the system in their head. Rewrote as one Go service. Delivery reliability improved.
+**Microservices for everything → Segment (2018)**
+140+ services, one per data destination. Routing logic duplicated 140 times. On-call couldn't hold the system in their head. Folded back into one monolithic destination service. Delivery reliability improved.
 → [full case](DOGMAS.md#4-microservices-for-everything-)
 
-**DRY → shared config with 14 flags (QuackNet, 2025)**
-ProbeConfig abstracted after 2 similar structs. Grew to 14 flags as 4 subsystems diverged. A Kafka change broke the Wi-Fi probe. Split back into 3 structs. The abstraction cost more than the duplication would have.
+**DRY → the wrong abstraction (Sandi Metz, 2016)**
+A shared function serving 2 callers grows flag parameters as callers diverge, until every change breaks someone. Metz's rule: prefer duplication over the wrong abstraction. (The catalog also carries a first-party case of ours — QuackNet's 14-flag ProbeConfig — labelled first-party, because our rules require the label where there is no external link.)
 → [full case](DOGMAS.md#3-dry-dont-repeat-yourself-)
 
-**TDD → over-mocked suite that passed but missed integration bugs (Basecamp, 2014)**
-Tests mocked every boundary for unit purity. Integration bugs multiplied. DHH: "Test-driven development as ideology led to designing for tests instead of designing for the problem."
+**TDD → "a dense jungle of service objects, command patterns, and worse" (DHH, 2014)**
+Verbatim: "Test-first units leads to an overly complex web of intermediary objects and indirection in order to avoid doing anything that's 'slow'." A first-person renunciation by the named engineer — an essay, not an incident report, and the catalog labels it as exactly that.
 → [full case](DOGMAS.md#6-tdd-test-driven-development-)
 
-**OOP inheritance → 7 files for a 5-line business rule (Java EJB era, 2002)**
-EJB 2.x required Home + Local + Remote interfaces + XML for every entity. Rod Johnson documented it and built Spring to eliminate the inheritance tax.
+**OOP inheritance → two years to unwind the Tony Hawk object hierarchy (Neversoft, 2007)**
+The industry-standard deep game-object hierarchy became a blob across three shipped titles; Mick West's first-person account of refactoring it to components while shipping a game a year.
 → [full case](DOGMAS.md#5-oop-as-the-only-truth-inheritance-everywhere-)
 
 ---
@@ -196,6 +196,7 @@ The pattern is predictable: a good rule gets applied without its conditions. Nob
 ## Honesty rules
 
 - Every postmortem has a source link, or is explicitly marked first-party / `source_url: null`.
+- Built with heavy AI assistance — the commit trailers say so on purpose. Sources are re-verified by a human before releases, and `tools/verify_sources.py` re-checks every link so you don't have to trust either of us.
 - Every claim can be challenged via the `honesty-bug` label on GitHub.
 - The scanner produces verifiable AST signals. No "expert" numbers without evidence.
 - If a detector doesn't exist yet, the catalog says so: `[NEED POSTMORTEMS]`.
