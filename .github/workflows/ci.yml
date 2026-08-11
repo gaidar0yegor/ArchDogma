@@ -61,3 +61,4 @@ jobs:
         run: |
           archdogma scan src/ --no-fail --summary
           archdogma modules src/ --no-fail
+          archdogma contracts . --exclude 'tests/**'
