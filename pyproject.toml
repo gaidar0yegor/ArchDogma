@@ -65,15 +65,24 @@ voice = [
 pretty = [
     "rich>=13.7",
 ]
+# mcp: the official Model Context Protocol SDK, for `archdogma mcp` — the
+# server that lets coding agents call the scanners and read the catalog.
+mcp = [
+    # >=2.0: build_server imports mcp.server.mcpserver.MCPServer, which is
+    # the 2.0 API. A 1.x floor would satisfy pip while the import fails,
+    # producing an error telling users to install what they already have.
+    "mcp>=2.0",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.1",
     "mypy>=1.8",
     "ruff>=0.3",
-    # Tests exercise --pretty and the pyttsx3 fallback path, so dev pulls
-    # both extras' packages in explicitly.
+    # Tests exercise --pretty, the pyttsx3 fallback path, and the MCP
+    # server wiring, so dev pulls the extras' packages in explicitly.
     "rich>=13.7",
     "pyttsx3>=2.90",
+    "mcp>=2.0",
 ]
 
 [project.scripts]
@@ -81,6 +90,16 @@ archdogma = "archdogma.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/archdogma"]
+
+# The catalog is the product; a wheel without it ships a scanner that
+# cannot cite its own receipts. force-include keeps repo-root
+# catalog/dogmas.yaml the single source of truth (ADR-002) while placing a
+# copy inside the package for installed environments.
+[tool.hatch.build.targets.wheel.force-include]
+"catalog/dogmas.yaml" = "archdogma/_data/dogmas.yaml"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "catalog", "tests", "README.md", "CHANGELOG.md", "LICENSE", "DOGMAS.md"]
 
 [tool.ruff]
 line-length = 100

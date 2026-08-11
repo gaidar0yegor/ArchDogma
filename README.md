@@ -131,6 +131,32 @@ Every tag reports the ids of the catalog entries that claim it. Those entries ar
 
 That is the difference between a linter and this: `god-module at line 1` is no more useful than `C0301 line too long`. A tag with the conditions under which its dogma stops working is something you can argue with.
 
+### MCP server
+
+```bash
+pip install 'archdogma[mcp]'
+archdogma mcp                # stdio server for Claude Code, Cursor, any MCP client
+```
+
+Five tools, all local, no tokens, MIT: `scan_functions`, `analyze_modules`, `explain_dogma`, `list_dogmas`, and the one the others exist to support — `check_before_refactor`: an agent about to edit an unfamiliar file asks "what am I about to break?" and gets the answer from the import graph and the git history: who depends on it, when it last changed, whose knowledge it is, and what historically changes with it.
+
+Claude Code config (`.mcp.json`):
+
+```json
+{"mcpServers": {"archdogma": {"command": "archdogma", "args": ["mcp"]}}}
+```
+
+A Claude Code skill ships in [integrations/claude-code/](integrations/claude-code/) — copy it into `.claude/skills/` to teach the agent when to reach for these tools.
+
+### SARIF
+
+```bash
+archdogma scan src/ --format sarif
+archdogma modules src/ --format sarif
+```
+
+SARIF 2.1.0 for code-scanning UIs and review platforms. Every result is level `warning`, deliberately: this tool ships signals with context, not severities, and inventing a severity scale would claim a precision the detectors do not have.
+
 ---
 
 ## Install

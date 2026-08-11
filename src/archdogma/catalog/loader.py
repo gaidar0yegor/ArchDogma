@@ -82,15 +82,26 @@ class CatalogError(RuntimeError):
 
 
 def default_catalog_path() -> Path | None:
-    """Look for `catalog/dogmas.yaml` in cwd and ancestors.
+    """Look for `catalog/dogmas.yaml` in cwd and ancestors, then the wheel.
 
-    Returns None if not found — callers decide whether that's fatal.
+    The cwd walk comes first on purpose: a project that ships its own
+    catalog is describing itself, and its claims outrank the bundled ones
+    for its own code. The packaged copy (`archdogma/_data/dogmas.yaml`,
+    force-included at build time) is the fallback that makes `explain`,
+    `dogmas` and `search` work from a plain `pip install archdogma` in any
+    directory — without it, the advertised install path shipped a scanner
+    that could not cite its own receipts.
+
+    Returns None if neither exists — callers decide whether that's fatal.
     """
     here = Path.cwd()
     for candidate in [here, *here.parents]:
         p = candidate / "catalog" / "dogmas.yaml"
         if p.exists():
             return p
+    packaged = Path(__file__).resolve().parent.parent / "_data" / "dogmas.yaml"
+    if packaged.exists():
+        return packaged
     return None
 
 

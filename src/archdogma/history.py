@@ -316,6 +316,15 @@ def load_history(path: Path, timeout: int = 120) -> RepoHistory | None:
     root = repo_root(path)
     if root is None:
         return None
+    # A shallow clone's log is truncated: every file looks young and every
+    # author list incomplete. The docstring above promises --depth 1 must
+    # not fabricate that picture — this is the check that keeps the promise.
+    try:
+        shallow = _run_git(root, ["rev-parse", "--is-shallow-repository"]).strip()
+    except GitUnavailable:
+        return None
+    if shallow == "true":
+        return None
     try:
         output = _run_git(
             root,
