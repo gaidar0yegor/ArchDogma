@@ -7,6 +7,18 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Changed
+- **Core dependencies cut to two** (`click`, `pyyaml`). `rich` moved to the
+  `pretty` extra and `pyttsx3` to the `voice` extra. `--pretty` without rich
+  degrades to plain output with a pointer to the extra — plain IS the
+  accessibility contract (ADR-001), so nothing is lost. Voice on macOS/Linux
+  never needed pyttsx3 (native `say`/`espeak-ng`); the extra matters on
+  Windows only. The project page's "pure stdlib" claim was false with four
+  runtime deps; two-plus-extras makes the honest claim "stdlib analyzers,
+  two-dependency core".
+- README: positioning statement and a sourced comparison table
+  (import-linter, tach, pydeps, CodeScene, repowise) under honesty-bug rules.
+
 ## [0.4.0] - 2026-08-11
 
 Release note: 0.3.0 below was merged to main but never tagged, so it never

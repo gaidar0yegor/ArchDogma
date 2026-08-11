@@ -32,10 +32,12 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Documentation",
 ]
+# Core stays at two: click (CLI) and pyyaml (the catalog is YAML per
+# ADR-002). Everything else is an extra — the analyzers themselves are
+# pure stdlib, and the package should not install a TTS engine on a CI
+# runner that will never speak.
 dependencies = [
     "click>=8.1",
-    "rich>=13.7",
-    "pyttsx3>=2.90",
     "pyyaml>=6.0",
 ]
 
@@ -50,11 +52,28 @@ Changelog = "https://github.com/gaidar0yegor/ArchDogma/blob/main/CHANGELOG.md"
 # shipped in 0.3.0 using `subprocess` and one `git log` call, so the extra
 # installed a dependency nothing imports. Removed rather than left as a
 # no-op install — see ADR-003.
+#
+# voice: pyttsx3 is only the LAST-RESORT TTS backend. On macOS (`say`) and
+# Linux (`espeak-ng`) voice mode works with no extra at all; the extra
+# matters on Windows or on systems with no native TTS binary.
+voice = [
+    "pyttsx3>=2.90",
+]
+# pretty: rich powers the opt-in --pretty rendering. Without it the CLI
+# falls back to the plain output, which is the accessibility contract's
+# default anyway (ADR-001).
+pretty = [
+    "rich>=13.7",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=4.1",
     "mypy>=1.8",
     "ruff>=0.3",
+    # Tests exercise --pretty and the pyttsx3 fallback path, so dev pulls
+    # both extras' packages in explicitly.
+    "rich>=13.7",
+    "pyttsx3>=2.90",
 ]
 
 [project.scripts]
