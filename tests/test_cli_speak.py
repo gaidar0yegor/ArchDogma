@@ -181,3 +181,32 @@ def test_speak_flag_called_on_clean_function(monkeypatch) -> None:
     assert result.exit_code == 0, result.output
     assert calls
     assert calls[0] == "No tags detected. Trust score unknown."
+
+
+# ---------------------------------------------------------------------------
+# Optional-dependency degradation (extras since 0.5.0)
+# ---------------------------------------------------------------------------
+
+
+def test_pretty_without_rich_falls_back_to_plain(tmp_path, monkeypatch):
+    """--pretty with no rich installed must degrade to plain, not crash.
+
+    Plain is the accessibility contract's default (ADR-001); rich is the
+    optional add-on. Simulated by poisoning sys.modules the way a missing
+    package manifests to `from rich.console import ...`.
+    """
+    import sys
+
+    from click.testing import CliRunner
+
+    from archdogma.cli import main
+
+    for mod in ("rich", "rich.console", "rich.panel", "rich.table"):
+        monkeypatch.setitem(sys.modules, mod, None)
+
+    src = tmp_path / "m.py"
+    src.write_text("def f():\n    return 1\n", encoding="utf-8")
+    result = CliRunner().invoke(main, ["--pretty", "probe", str(src), "-f", "f"])
+    assert result.exit_code == 0
+    assert "archdogma[pretty]" in result.stderr
+    assert "Function: f" in result.stdout or "f" in result.stdout

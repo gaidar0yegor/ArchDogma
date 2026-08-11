@@ -6,6 +6,24 @@
 
 > **A catalog of real engineering failures. The scanner is just a way to find them in your code.**
 
+Linters see code. ArchDogma sees **history × structure** — and every finding
+comes with a receipt: a documented, sourced case of a real team paying for
+this exact pattern.
+
+### What nothing else does
+
+Claims below are checkable; sources linked. Corrections welcome via the
+`honesty-bug` label.
+
+| Tool | Import-graph contracts | Git history × structure | Findings linked to sourced real-world failures | Free for private code |
+|---|---|---|---|---|
+| [import-linter](https://github.com/seddonym/import-linter) | yes | no | no | yes |
+| [tach](https://github.com/gauge-sh/tach) | yes | no | no | yes (no release since 2025-05) |
+| [pydeps](https://github.com/thebjorn/pydeps) | visualisation only | no | no | yes |
+| [CodeScene](https://codescene.com/pricing) | partial | **yes** | no | no (OSS only; CLI needs a token) |
+| [repowise](https://github.com/repowise-dev/repowise) | no | **yes** | aggregate statistics, not per-finding sources | yes (AGPL) |
+| **ArchDogma** | planned (see roadmap) | **yes** | **yes — every case fetch-verified** | yes (MIT) |
+
 ---
 
 ## The Catalog
@@ -119,6 +137,16 @@ That is the difference between a linter and this: `god-module at line 1` is no m
 
 ```bash
 pip install archdogma
+```
+
+Core pulls exactly two dependencies (`click`, `pyyaml`) — the analyzers
+themselves are pure stdlib. Optional extras:
+
+```bash
+pip install 'archdogma[pretty]'   # rich rendering for --pretty
+pip install 'archdogma[voice]'    # pyttsx3 TTS fallback — only needed on
+                                  # Windows; macOS (say) and Linux
+                                  # (espeak-ng) speak with no extra at all
 ```
 
 Or from source:

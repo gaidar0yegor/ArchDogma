@@ -796,9 +796,21 @@ def _render_catalog_links_plain(result: ProbeResult) -> None:
 
 def _render_pretty(result: ProbeResult) -> None:
     """Rich output for sighted users. Kept restrained — no animations."""
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.table import Table
+    except ImportError:
+        # rich lives in the `pretty` extra since 0.5.0. Degrading to plain
+        # is not a workaround — plain IS the contract (ADR-001); --pretty
+        # is the add-on that may be absent.
+        click.echo(
+            "--pretty needs the 'rich' package (pip install 'archdogma[pretty]'). "
+            "Showing plain output.",
+            err=True,
+        )
+        _render_plain(result)
+        return
 
     console = Console()
     header = (
