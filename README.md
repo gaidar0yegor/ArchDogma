@@ -30,6 +30,12 @@ archdogma dogmas
 archdogma search "microservices"
 archdogma search "inheritance"
 archdogma search "coverage"
+
+# Get the whole argument for one entry — rule, origin, cases, when to break it
+archdogma explain dry
+archdogma explain circular-import   # by detector tag
+archdogma explain 4                 # by number
+archdogma explain dry --speak       # spoken summary, same as probe --speak
 ```
 
 ### Selected postmortems

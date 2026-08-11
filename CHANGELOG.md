@@ -8,6 +8,17 @@ breaking changes are allowed in any release before `0.1.0`.
 ## [Unreleased]
 
 ### Added
+- **`archdogma explain TARGET`** — the catalog as a mentor. One entry,
+  whole: the rule as preached, where it comes from, the conditions under
+  which it fails, who paid for it (with sources), the counter-position
+  (with attribution), when to follow, when to break, and the one signal
+  that it is already breaking. TARGET resolves as dogma id, candidate id,
+  number, detector tag (a tag claimed by several entries shows all of
+  them), or title fragment; misses exit non-zero with suggestions.
+  `--format json` emits the full entry; `--speak` mirrors `probe --speak`.
+  Lives in `mentor.py`, registered onto the CLI group — cli.py sits one
+  definition under its own god-module threshold, and the honest response
+  to that is extraction, not exemption.
 - **Nine sourced failure cases across four dogmas** — `solid`,
   `premature-optimization`, `functional-purity` and `kiss` move from
   `need_postmortems` to `filled`. Every source URL was fetched and verified
