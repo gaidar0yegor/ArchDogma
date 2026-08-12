@@ -207,10 +207,27 @@ def test_scan_json_now_carries_dogma_ids(runner: CliRunner, tmp_path: Path) -> N
 def test_json_says_so_when_no_catalog_was_found(
     runner: CliRunner, cyclic_project: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Since the field-report fix, a foreign cwd FINDS the bundled catalog
+    (that was the bug); "no catalog anywhere" now needs simulating a broken
+    install where even the bundled copy is absent."""
+    import archdogma.catalog.loader as loader_mod
+
+    monkeypatch.setattr(loader_mod, "default_catalog_path", lambda: None)
     monkeypatch.chdir(cyclic_project)
     data = run_json(runner, "modules", str(cyclic_project))
     assert data["catalog"]["loaded"] is False
     assert "linter report" in data["catalog"]["note"]
+
+
+def test_foreign_cwd_now_finds_the_bundled_catalog(
+    runner: CliRunner, cyclic_project: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The field-report fix itself: auto-detection from a project without
+    its own catalog must serve ours, not degrade to a linter report."""
+    monkeypatch.chdir(cyclic_project)
+    data = run_json(runner, "modules", str(cyclic_project))
+    assert data["catalog"]["loaded"] is True
+    assert "clean-architecture" in data["catalog"]["entries"]
 
 
 @pytest.mark.parametrize("command", ["modules", "scan"])
@@ -226,6 +243,9 @@ def test_diagnostics_never_contaminate_json_stdout(
     stderr. On stdout it would break every consumer that pipes this into a
     parser, which is the entire audience for --format json.
     """
+    import archdogma.catalog.loader as loader_mod
+
+    monkeypatch.setattr(loader_mod, "default_catalog_path", lambda: None)
     monkeypatch.chdir(cyclic_project)
     result = runner.invoke(
         main, [command, str(cyclic_project), "--format", "json", "--no-fail"]
