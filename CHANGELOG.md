@@ -7,6 +7,20 @@ breaking changes are allowed in any release before `0.1.0`.
 
 ## [Unreleased]
 
+### Fixed
+- **First field report, both findings fixed same day.** (1) Scans ground
+  through arbitrary virtualenvs: `.tool_venv` (4,919 third-party files in
+  the reporting scan) was not in the skip list — and no list is ever
+  complete, so virtualenvs are now detected by their `pyvenv.cfg` marker
+  regardless of name, the walk prunes skipped directories instead of
+  visiting-then-filtering (rglob → os.walk), and bare `--exclude vendor`
+  now excludes the subtree the way every user expects (raw fnmatch did
+  not). (2) In editable installs with cwd inside a foreign project, every
+  CLI command lost the catalog — the packaged copy exists only in wheels.
+  `default_catalog_path` now falls back to a bounded source-tree walk
+  (stops at the pyproject.toml that names archdogma, so an unrelated
+  ancestor's catalog can never be served by accident).
+
 ### Added
 - **Batch 3: incident cases for the Tier 2/3 tags' catalog entries** — the
   launch-headline detectors now have receipts, not just methodology

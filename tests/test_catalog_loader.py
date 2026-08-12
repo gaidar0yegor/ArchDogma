@@ -190,3 +190,17 @@ def test_dogmaref_defaults_are_empty_not_none(tmp_path: Path) -> None:
     cat = load_catalog(synth)
     assert cat.dogmas[0].related_tags == ()
     assert cat.dogmas[0].v01_priority is False
+
+
+def test_default_catalog_found_from_foreign_cwd_in_editable_install(
+    tmp_path, monkeypatch
+):
+    """Field report: from an editable install with cwd in a FOREIGN project,
+    every CLI command lost the catalog — cwd walk misses, and the packaged
+    copy only exists in wheels. The bounded source-tree walk must serve it."""
+    from archdogma.catalog.loader import default_catalog_path
+
+    monkeypatch.chdir(tmp_path)  # a directory with no catalog anywhere above
+    found = default_catalog_path()
+    assert found is not None
+    assert found.name == "dogmas.yaml"
