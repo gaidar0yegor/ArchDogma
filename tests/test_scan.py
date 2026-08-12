@@ -222,3 +222,70 @@ def test_cli_scan_directory_summary(tmp_path: Path) -> None:
     result = runner.invoke(main, ["scan", str(tmp_path)])
     assert result.exit_code == 0
     assert "Scanned" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Field report regressions (first external scans, 2026-08)
+# ---------------------------------------------------------------------------
+
+
+def test_virtualenvs_are_skipped_by_marker_not_by_name(tmp_path):
+    """A venv named anything (.tool_venv, my_env, ...) must be pruned:
+    pyvenv.cfg is the marker, the name list can never be complete."""
+    from archdogma.probe.scanner import collect_python_files
+
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "real.py").write_text("x = 1\n", encoding="utf-8")
+    oddly_named = tmp_path / "totally_not_a_venv"
+    (oddly_named / "lib").mkdir(parents=True)
+    (oddly_named / "pyvenv.cfg").write_text("home = /usr\n", encoding="utf-8")
+    (oddly_named / "lib" / "vendor.py").write_text("y = 2\n", encoding="utf-8")
+
+    found = [p.name for p in collect_python_files(tmp_path)]
+    assert found == ["real.py"]
+
+
+def test_tool_venv_is_in_the_default_skip_list(tmp_path):
+    from archdogma.probe.scanner import collect_python_files
+
+    (tmp_path / ".tool_venv" / "lib").mkdir(parents=True)
+    (tmp_path / ".tool_venv" / "lib" / "vendor.py").write_text("", encoding="utf-8")
+    (tmp_path / "mine.py").write_text("", encoding="utf-8")
+    assert [p.name for p in collect_python_files(tmp_path)] == ["mine.py"]
+
+
+def test_bare_directory_exclude_pattern_prunes_the_subtree(tmp_path):
+    """--exclude vendor (no wildcard) must exclude everything under vendor/ —
+    the behaviour every user expects, which raw fnmatch does not give."""
+    from archdogma.probe.scanner import collect_python_files
+
+    (tmp_path / "vendor" / "deep").mkdir(parents=True)
+    (tmp_path / "vendor" / "deep" / "lib.py").write_text("", encoding="utf-8")
+    (tmp_path / "mine.py").write_text("", encoding="utf-8")
+    assert [
+        p.name for p in collect_python_files(tmp_path, excludes=("vendor",))
+    ] == ["mine.py"]
+
+
+def test_excluded_directories_are_pruned_not_walked(tmp_path, monkeypatch):
+    """The skip must happen at walk time: a 5,000-file venv should not even
+    be entered. Proxied by counting directory visits via os.walk."""
+    import archdogma.probe.scanner as scanner_mod
+    import os as real_os
+
+    (tmp_path / ".venv" / "lib").mkdir(parents=True)
+    for i in range(20):
+        (tmp_path / ".venv" / "lib" / f"m{i}.py").write_text("", encoding="utf-8")
+    (tmp_path / "mine.py").write_text("", encoding="utf-8")
+
+    visited = []
+    original_walk = real_os.walk
+
+    def counting_walk(top, **kw):
+        for dirpath, dirnames, filenames in original_walk(top, **kw):
+            visited.append(dirpath)
+            yield dirpath, dirnames, filenames
+
+    monkeypatch.setattr(scanner_mod.os if hasattr(scanner_mod, "os") else real_os, "walk", counting_walk)
+    list(scanner_mod.collect_python_files(tmp_path))
+    assert not any(".venv" in v for v in visited)

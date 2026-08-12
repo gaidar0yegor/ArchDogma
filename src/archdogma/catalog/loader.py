@@ -102,6 +102,19 @@ def default_catalog_path() -> Path | None:
     packaged = Path(__file__).resolve().parent.parent / "_data" / "dogmas.yaml"
     if packaged.exists():
         return packaged
+    # Editable installs have no packaged copy (force-include is a wheel
+    # build step), so when cwd is a FOREIGN project the two lookups above
+    # both miss — which is exactly the situation where the catalog matters
+    # most, per the first field report. Walk up from this file to OUR repo
+    # root, bounded by the pyproject.toml that names archdogma so an
+    # unrelated ancestor's catalog can never be served by accident.
+    for parent in Path(__file__).resolve().parents:
+        marker = parent / "pyproject.toml"
+        if marker.exists():
+            if 'name = "archdogma"' not in marker.read_text(encoding="utf-8"):
+                return None
+            candidate = parent / "catalog" / "dogmas.yaml"
+            return candidate if candidate.exists() else None
     return None
 
 

@@ -41,11 +41,22 @@ class FileScanResult:
 
 
 # Directories to skip during recursive scan — common non-project dirs.
+# Virtualenvs are ALSO detected by their pyvenv.cfg marker (see
+# _is_virtualenv), because the name list can never be complete: the first
+# field report was a scan grinding through 4,919 third-party files in a
+# `.tool_venv/` that no list had thought to include.
 _SKIP_DIRS = frozenset({
-    ".git", ".tox", ".venv", "venv", "env", "__pycache__",
-    ".mypy_cache", "node_modules", "dist", "build", ".eggs",
-    ".pytest_cache", ".ruff_cache",
+    ".git", ".tox", ".venv", "venv", "env", ".env", ".tool_venv",
+    ".direnv", "__pycache__", ".mypy_cache", "node_modules", "dist",
+    "build", ".eggs", ".pytest_cache", ".ruff_cache", ".nox",
 })
+
+
+def _is_virtualenv(path: Path) -> bool:
+    """A directory containing pyvenv.cfg is a virtual environment,
+    whatever it is named. The marker is written by venv and virtualenv
+    alike, so it catches every naming convention the skip list misses."""
+    return (path / "pyvenv.cfg").is_file()
 
 
 def scan_file(path: Path, catalog: Catalog | None = None) -> FileScanResult:
@@ -84,25 +95,44 @@ def collect_python_files(
     relative to root (e.g. ``("tests/**", "*_pb2.py")``).
     """
     import fnmatch
+    import os
 
     if root.is_file():
         if root.suffix == ".py":
             yield root
         return
 
-    for path in sorted(root.rglob("*.py")):
-        rel_parts = path.relative_to(root).parts
-        # Skip if any parent directory component is in the skip set or ends
-        # with ".egg-info" (editable installs).
-        if any(
-            p in _SKIP_DIRS or p.endswith(".egg-info")
-            for p in rel_parts[:-1]
-        ):
-            continue
-        rel = str(path.relative_to(root))
-        if any(fnmatch.fnmatch(rel, pat) for pat in excludes):
-            continue
-        yield path
+    def _excluded(rel: str) -> bool:
+        # fnmatch is not path-aware ("*" crosses "/"), so a bare directory
+        # pattern like ".tool_venv" would silently match nothing under it.
+        # Treat every pattern as also matching anything beneath it — the
+        # behaviour every user of --exclude actually expects.
+        for pat in excludes:
+            if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(rel, pat.rstrip("/") + "/*"):
+                return True
+        return False
+
+    # os.walk with in-place pruning, not rglob: a skipped virtualenv must
+    # not even be walked. On a tree with a 5,000-file venv the difference
+    # is the scan versus the coffee break.
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        rel_dir = "" if here == root else str(here.relative_to(root))
+        dirnames[:] = [
+            d
+            for d in sorted(dirnames)
+            if d not in _SKIP_DIRS
+            and not d.endswith(".egg-info")
+            and not _is_virtualenv(here / d)
+            and not _excluded(f"{rel_dir}/{d}" if rel_dir else d)
+        ]
+        for name in sorted(filenames):
+            if not name.endswith(".py"):
+                continue
+            rel = f"{rel_dir}/{name}" if rel_dir else name
+            if _excluded(rel):
+                continue
+            yield here / name
 
 
 def scan_path(
